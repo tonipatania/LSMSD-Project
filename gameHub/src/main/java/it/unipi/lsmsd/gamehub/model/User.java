@@ -1,5 +1,6 @@
 package it.unipi.lsmsd.gamehub.model;
 
+
 import it.unipi.lsmsd.gamehub.DTO.GameWishlistDTO;
 import lombok.*;
 import org.springframework.data.annotation.Id;
@@ -15,6 +16,7 @@ import java.util.List;
 @ToString
 @Document(collection = "users")
 public class User {
+
     @Id
     private String id;
     private String username;
