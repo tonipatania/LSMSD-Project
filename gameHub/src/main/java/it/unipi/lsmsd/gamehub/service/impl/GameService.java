@@ -139,6 +139,29 @@ public class GameService implements IGameService {
         }
     }
 
+    @Override
+    public GameDTO createGame(GameDTO gameDTO) {
+        // converto il dto in model entity
+        ModelMapper modelMapper = new ModelMapper();
+        Game game = modelMapper.map(gameDTO, Game.class);
+        // inserisco il model nel db
+        try {
+            Game saved = gameRepository.save(game);
+            // mappare model in dto
+            GameDTO gameInserted = modelMapper.map(saved, GameDTO.class);
+            return gameInserted;
+        }
+        catch (Exception e) {
+            System.out.println("Errore nella creazione del gioco: " + e.getMessage());
+            return null;
+        }
+    }
+    @Override
+    public void deleteGame(String id) {
+        // aggiungere logica di errore
+        gameRepository.deleteById(id);
+    }
+
 
 
 
