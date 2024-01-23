@@ -25,6 +25,8 @@ import java.util.List;
 public class GameController {
     @Autowired
     private IGameService gameService;
+    @Autowired
+    private ILoginService iLoginService;
 
     @GetMapping("/game")
     public ResponseEntity<List<Game>> retrieveGamesByParameters(@RequestBody GameDTO gameDTO) {
