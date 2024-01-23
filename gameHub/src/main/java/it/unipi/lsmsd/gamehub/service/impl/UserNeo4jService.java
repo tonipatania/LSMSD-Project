@@ -69,16 +69,6 @@ public class UserNeo4jService implements IUserNeo4jService {
         return userNeo4jRepository.findFriendsOfFriends(username);
     }
 
-
-    @Override
-    public void SyncUser() {
-        List<User> usersMongo = loginRepository.findAll();
-        for(User user : usersMongo) {
-            UserNeo4j userNeo4j = convertUser(user);
-            userNeo4jRepository.save(userNeo4j);
-        }
-    }
-
     private UserNeo4j convertUser(User user) {
         UserNeo4j userNeo4j = new UserNeo4j();
         userNeo4j.setId(user.getId());
