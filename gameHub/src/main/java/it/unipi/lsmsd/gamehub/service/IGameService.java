@@ -3,14 +3,10 @@ package it.unipi.lsmsd.gamehub.service;
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
 import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation2;
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
-import it.unipi.lsmsd.gamehub.model.Review;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
-
-
 import java.util.List;
 
 public interface IGameService {
@@ -20,10 +16,7 @@ public interface IGameService {
 
     public List<GameDTOAggregation2> findAggregation4();
 
-    //toni ha messo Page<GameDTO>
-    public Page<Game> getAll(Pageable pageable);
-
-    List<Review> updateGameReview(ReviewDTO reviewDTO, int limit);
-
-
+    public Page<GameDTO> getAll(Pageable pageable);
+    public GameDTO createGame(GameDTO gameDTO);
+    public void deleteGame(String id);
 }

@@ -3,11 +3,8 @@ package it.unipi.lsmsd.gamehub.controller;
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
 import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation2;
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
-import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.service.IGameService;
-import it.unipi.lsmsd.gamehub.service.IReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,9 +20,6 @@ import java.util.List;
 public class GameController {
     @Autowired
     private IGameService gameService;
-
-    @Autowired
-    private IReviewService reviewService;
 
     @GetMapping("/game")
     public ResponseEntity<List<Game>> retrieveGamesByParameters(@RequestBody GameDTO gameDTO) {
@@ -71,17 +65,6 @@ public class GameController {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).body(null);
         }
         return ResponseEntity.ok(gameDTOPage);
-    }
-
-    //update game review
-    @GetMapping("/updateGameReview")
-    public ResponseEntity<List<Review>> updateGameReview(@RequestBody ReviewDTO reviewDTO) {
-        List<Review> reviewList = gameService.updateGameReview(reviewDTO,20);
-        if (!reviewList.isEmpty()) {
-            return ResponseEntity.ok(reviewList);
-        }
-        System.out.println("gamelist empty");
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
 
