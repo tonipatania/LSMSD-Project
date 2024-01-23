@@ -5,7 +5,6 @@ import org.neo4j.ogm.annotation.NodeEntity;
 import org.springframework.data.neo4j.core.schema.Id;
 import org.springframework.data.neo4j.core.schema.Node;
 import org.springframework.data.neo4j.core.schema.Relationship;
-
 import java.util.List;
 
 @AllArgsConstructor
@@ -13,7 +12,9 @@ import java.util.List;
 @Getter
 @Setter
 @ToString
+
 @NodeEntity("UserNeo4j")
+
 public class UserNeo4j {
     @Id
     private String id;

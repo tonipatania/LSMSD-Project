@@ -7,15 +7,16 @@ import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
-
 import java.util.ArrayList;
 import java.util.List;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
 @ToString
 @Document(collection = "games")
+
 @CompoundIndexes({
         @CompoundIndex(name = "genres_avgScore", def = "{'genres' : 1, 'avgScore': 1}")
 })
@@ -35,10 +36,12 @@ public class Game {
     private int avgScore;
     @Field("Price")
     private double price;
+
     @Field("About the game")
     private String aboutTheGame;
     @Field("Supported languages")
     private String supportedLanguages;
+
     @Field("Developers")
     private String developers;
     @Field("Publishers")
@@ -49,5 +52,6 @@ public class Game {
     private URL URL;
     @Field("Reviews")
     private List<Review> reviews;
+
 
 }

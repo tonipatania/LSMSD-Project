@@ -1,6 +1,5 @@
 package it.unipi.lsmsd.gamehub.repository;
 
-
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
@@ -19,9 +18,4 @@ public interface GameNeo4jRepository extends Neo4jRepository<GameNeo4j, String> 
    //@Query("MATCH (g:GameNeo4j)<-[:ADD]-(u:UserNeo4j) RETURN g.id as id, g.name as name, g.developers as developers, g.categories as categories, g.genres as genres, count(u) as numberOfLinks ORDER BY numberOfLinks DESC LIMIT 10")
    @Query("MATCH (g:GameNeo4j)<-[:ADD]-(u:UserNeo4j) WHERE g.name = $name RETURN count(u) as numberOfLinks")
     int findGameIngoingLinks(@Param("name") String name);
-
-
-
-
-
 }

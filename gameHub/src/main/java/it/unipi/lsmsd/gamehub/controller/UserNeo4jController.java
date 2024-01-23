@@ -1,5 +1,6 @@
 package it.unipi.lsmsd.gamehub.controller;
 
+
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
@@ -11,7 +12,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -22,15 +22,8 @@ import java.util.stream.Collectors;
 public class UserNeo4jController {
     @Autowired
     private UserNeo4jService userNeo4jService;
-
     @Autowired
     private GameNeo4jService gameNeo4jService;
-
-    @PostMapping("/loadgames")
-    public ResponseEntity<String> reqGames() {
-        userNeo4jService.loadGames();
-        return ResponseEntity.ok("Giochi caricati");
-    }
 
     @PostMapping("/sync")
     public ResponseEntity<String> syncUser() {
@@ -135,5 +128,10 @@ public class UserNeo4jController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    @PostMapping("/loadgames")
+    public ResponseEntity<String> reqGames() {
+        userNeo4jService.loadGames();
+        return ResponseEntity.ok("Giochi caricati");
+    }
 
 }

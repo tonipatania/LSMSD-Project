@@ -2,7 +2,6 @@ package it.unipi.lsmsd.gamehub.service;
 
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
-
 import java.util.List;
 
 public interface IUserNeo4jService {

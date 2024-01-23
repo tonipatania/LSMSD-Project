@@ -9,7 +9,16 @@ import lombok.*;
 @ToString
 
 public class GameDTO {
+    private String id;
     private String name;
+    private String releaseDate;
+    private Double price;
+    private String aboutTheGame;
+    private String supportedLanguages;
+    private String developers;
+    private String publishers;
+    private String categories;
     private String genres;
+    // mettere i voti
     private int avgScore;
 }
