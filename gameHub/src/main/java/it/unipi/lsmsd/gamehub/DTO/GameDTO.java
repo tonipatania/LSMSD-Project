@@ -1,5 +1,6 @@
 package it.unipi.lsmsd.gamehub.DTO;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 @AllArgsConstructor
@@ -8,6 +9,7 @@ import lombok.*;
 @Setter
 @ToString
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class GameDTO {
     private String id;
     private String name;
@@ -20,5 +22,5 @@ public class GameDTO {
     private String categories;
     private String genres;
     // mettere i voti
-    private int avgScore;
+    private Integer avgScore;
 }

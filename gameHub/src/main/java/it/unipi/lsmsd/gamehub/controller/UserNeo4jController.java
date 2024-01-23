@@ -22,15 +22,19 @@ import java.util.stream.Collectors;
 public class UserNeo4jController {
     @Autowired
     private UserNeo4jService userNeo4jService;
-    @Autowired
-    private GameNeo4jService gameNeo4jService;
 
+    // to load user from mongo to neo4j
     @PostMapping("/sync")
     public ResponseEntity<String> syncUser() {
         userNeo4jService.SyncUser();
         return ResponseEntity.ok("Sincronizzazione completata");
     }
-
+    // to load games from mongo to neo4j
+    @PostMapping("/loadgames")
+    public ResponseEntity<String> reqGames() {
+        userNeo4jService.loadGames();
+        return ResponseEntity.ok("Giochi caricati");
+    }
     @GetMapping("/wishlist")
     public ResponseEntity<List<GameNeo4j>> getUSerWishlist(@RequestParam String username) {
         List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username);
@@ -127,11 +131,4 @@ public class UserNeo4jController {
         System.out.println("gamelist empty");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
-
-    @PostMapping("/loadgames")
-    public ResponseEntity<String> reqGames() {
-        userNeo4jService.loadGames();
-        return ResponseEntity.ok("Giochi caricati");
-    }
-
 }
