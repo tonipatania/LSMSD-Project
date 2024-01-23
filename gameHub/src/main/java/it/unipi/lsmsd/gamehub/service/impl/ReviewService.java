@@ -7,6 +7,7 @@ import it.unipi.lsmsd.gamehub.service.IReviewService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.GroupOperation;
@@ -59,7 +60,11 @@ public class ReviewService implements IReviewService {
 
     }
 
-
+    @Override
+    public List<Review> retrieveByTitleOrderByLikeCountDesc(ReviewDTO reviewDTO, int limit) {
+        Pageable pageable = PageRequest.of(0, limit);
+        return reviewRepository.findByTitleOrderByLikeCountDesc(reviewDTO.getTitle(),pageable);
+    }
 
 
 }

@@ -52,13 +52,6 @@ public class LoginService implements ILoginService {
             System.out.println("Errore durante il recupero dell'utente da MongoDB: " + e.getMessage());
             return new ResponseEntity<>("Errore durante il recupero del ruolo dell'utente", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-<<<<<<< HEAD
-
-        /*User u = loginRepository.findByUsername(username);
-        return Objects.equals(u.getPassword(), password);*/
-
-=======
->>>>>>> a41d8d1145af7195cc875f96112cff9544475d5b
     }
 
     public boolean registrate(RegistrationDTO registrationDTO){

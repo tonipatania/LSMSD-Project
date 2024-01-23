@@ -32,6 +32,17 @@ public class ReviewController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    //count the top 20 like review given a game title
+    @GetMapping("/topCountReview")
+    public ResponseEntity<List<Review>> retrieveByTitleOrderByLikeCountDesc(@RequestBody ReviewDTO reviewDTO) {
+        List<Review> reviewList = review2Service.retrieveByTitleOrderByLikeCountDesc(reviewDTO,20);
+        if (!reviewList.isEmpty()) {
+            return ResponseEntity.ok(reviewList);
+        }
+        System.out.println("gamelist empty");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
     @GetMapping("/reviewAggr1")
     public ResponseEntity<List<ReviewDTOAggregation>> retrieveAggregateFirstAndLastUserLike() {
         List<ReviewDTOAggregation> reviewList = review2Service.retrieveAggregateFirstAndLastUserLike();

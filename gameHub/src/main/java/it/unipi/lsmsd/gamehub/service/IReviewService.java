@@ -18,6 +18,8 @@ public interface IReviewService {
     public List<ReviewDTOAggregation> retrieveAggregateFirstAndLastUserLike();
     public List<ReviewDTOAggregation2> findAggregation3();
 
+    public List<Review> retrieveByTitleOrderByLikeCountDesc(ReviewDTO reviewDTO,int limit);
+
 
 
 
