@@ -77,12 +77,34 @@ public class UserNeo4jController {
         if (!userNeo4jList.isEmpty()) {
             return ResponseEntity.ok(userNeo4jList);
         }
-        System.out.println("gamelist empty");
+        System.out.println("no friends of friends");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
     //Query per amici suggeriti
     @GetMapping("/SuggestFriends")
+    public ResponseEntity<List<UserNeo4j>> getSuggestFriends(@RequestParam String username){
+        List<UserNeo4j> userNeo4jList=userNeo4jService.getSuggestedFriends(username);
+        if (!userNeo4jList.isEmpty()) {
+            return ResponseEntity.ok(userNeo4jList);
+        }
+        System.out.println("no suggested friends empty");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
+    //DA CAPIRE SE MODIFICARE ANCHE IL CAMPO likeCount in mongo
+    @PostMapping("/addLikeReview")
+    public ResponseEntity<String> addLikeToReview(@RequestParam String username,String id) {
+        userNeo4jService.addGameToWishlist(username,id);
+        if (id!=null) {
+            return ResponseEntity.ok("like aggiunto");
+        }
+        System.out.println("nessun like aggiunto");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
+    //Query per amici suggeriti
+    /*@GetMapping("/SuggestFriends")
     public ResponseEntity<List<UserNeo4j>> getSuggestUsers(@RequestParam String username){
 
         //get the user followed by the username
@@ -126,7 +148,7 @@ public class UserNeo4jController {
         }
         System.out.println("gamelist empty");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
+    }*/
 
     @PostMapping("/loadgames")
     public ResponseEntity<String> reqGames() {
