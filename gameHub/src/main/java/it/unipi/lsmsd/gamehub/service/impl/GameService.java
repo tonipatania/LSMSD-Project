@@ -98,43 +98,51 @@ public class GameService implements IGameService {
 
     @Override
     public List<Review> updateGameReview(ReviewDTO reviewDTO, int limit) {
-        Pageable pageable = PageRequest.of(0, limit);
+        try {
 
-        List<Review> top20Reviews = reviewRepository.findByTitleOrderByLikeCountDesc(reviewDTO.getTitle(), pageable);
-        System.out.println("stampo top 20 review\n");
-        for(int i=0;i<top20Reviews.size();i++){
-            System.out.println(top20Reviews.get(i).getComment());
-        }
 
-        // Find the corresponding game document
-        List<Game> gameList = gameRepository.findByName(reviewDTO.getTitle());
-        System.out.println("stampo nome gioco: "+gameList.get(0).getName());
+            Pageable pageable = PageRequest.of(0, limit);
 
-        if (!gameList.isEmpty()) {
-            Game game = gameList.get(0);
 
-            List<Review> existingReviews = game.getReviews();
-            System.out.println("stampo review esisitenti gioco: "+existingReviews);
-
-            // Initialize existingReviews if it is null
-            if (existingReviews == null) {
-                existingReviews = new ArrayList<>();
-            } else {
-                existingReviews.clear();  // Clear existing reviews if any
+            List<Review> top20Reviews = reviewRepository.findByTitleOrderByLikeCountDesc(reviewDTO.getTitle(), pageable);
+            System.out.println("stampo top 20 review\n");
+            for (int i = 0; i < top20Reviews.size(); i++) {
+                System.out.println(top20Reviews.get(i).getComment());
             }
 
-            // Add the new top 20 reviews to the existing reviews
-            existingReviews.addAll(top20Reviews);
-            System.out.println("stampo review esisitenti gioco dopo averle aggiornate: "+existingReviews);
+            // Find the corresponding game document
+            List<Game> gameList = gameRepository.findByName(reviewDTO.getTitle());
+            System.out.println("stampo nome gioco: " + gameList.get(0).getName());
+
+            if (!gameList.isEmpty()) {
+                Game game = gameList.get(0);
+
+                List<Review> existingReviews = game.getReviews();
+                System.out.println("stampo review esisitenti gioco: " + existingReviews);
+
+                // Initialize existingReviews if it is null
+                if (existingReviews == null) {
+                    existingReviews = new ArrayList<>();
+                } else {
+                    existingReviews.clear();  // Clear existing reviews if any
+                }
+
+                // Add the new top 20 reviews to the existing reviews
+                existingReviews.addAll(top20Reviews);
+                System.out.println("stampo review esisitenti gioco dopo averle aggiornate: " + existingReviews);
 
 
-            // Set the updated reviews list in the game document
-            game.setReviews(existingReviews);
+                // Set the updated reviews list in the game document
+                game.setReviews(existingReviews);
 
-            // Save the updated game document
-            gameRepository.save(game);
-            return existingReviews;
-        } else {
+                // Save the updated game document
+                gameRepository.save(game);
+                return existingReviews;
+            } else {
+                return null;
+            }
+        }catch (Exception e){
+            System.out.println(e.getMessage());
             return null;
         }
     }
