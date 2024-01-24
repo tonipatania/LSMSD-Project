@@ -26,4 +26,7 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
     @Query("MATCH (u:UserNeo4j {username: $username})-[:FOLLOW]->()-[:FOLLOW]->(friends) RETURN DISTINCT friends;")
     List<UserNeo4j> findFriendsOfFriends (@Param("username") String username);
 
+    @Query("MATCH (u:UserNeo4j {username: $username}), (r:ReviewNeo4j {id: $id}) MERGE (u)-[:LIKE]->(r)")
+    void addLikeToReview(@Param("username") String username, @Param("id") String id);
+
 }
