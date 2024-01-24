@@ -45,7 +45,6 @@ public class GameNeo4jService implements IGameNeo4jService {
 
             List<GameNeo4j> games = gameNeo4jRepository.findSuggestGames(lastGameWishlistDTO.getId(), userId);
             ModelMapper modelMapper = new ModelMapper();
-            //modelMapper.getConfiguration().setSkipNullEnabled(true);
             List<GameDTO> gameDTOS = games.stream()
                     .map(game -> modelMapper.map(game, GameDTO.class))
                     .collect(Collectors.toList());
