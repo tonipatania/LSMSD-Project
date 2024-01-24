@@ -13,4 +13,5 @@ public interface ReviewRepository extends MongoRepository<Review,String>, Review
     List<Review> findByTitle(String title);
 
     List<Review> findByTitleOrderByLikeCountDesc(String title,Pageable pageable);
+
 }
