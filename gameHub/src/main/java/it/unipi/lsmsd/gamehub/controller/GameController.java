@@ -27,7 +27,7 @@ public class GameController {
     @Autowired
     private ILoginService iLoginService;
 
-    @GetMapping("/game")
+    @GetMapping("/searchFilter")
     public ResponseEntity<List<Game>> retrieveGamesByParameters(@RequestBody GameDTO gameDTO) {
         List<Game> gameList = gameService.retrieveGamesByParameters(gameDTO);
         if (!gameList.isEmpty()) {

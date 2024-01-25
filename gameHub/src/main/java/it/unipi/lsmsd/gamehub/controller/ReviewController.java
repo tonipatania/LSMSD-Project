@@ -96,7 +96,4 @@ public class ReviewController {
         review2Service.deleteReview(reviewId);
         return ResponseEntity.ok().build();
     }
-
-
-
 }

@@ -25,7 +25,7 @@ public class LoginController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(authResponse);
         }
     }
-
+    // cerca di esserci
     @PostMapping("/signup")
     public ResponseEntity<String> registration(@RequestBody RegistrationDTO registrationDTO){
         if(loginService.registrate(registrationDTO)){
