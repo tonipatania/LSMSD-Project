@@ -1,6 +1,8 @@
 package it.unipi.lsmsd.gamehub.repository;
 
+import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
+import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.repository.MongoDBAggregation.GameRepositoryCustom;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,4 +17,5 @@ public interface GameRepository extends MongoRepository<Game,String>, GameReposi
     List<Game> findByAvgScoreGreaterThanEqual(int avgScore);
     List<Game> findByGenresAndAvgScoreGreaterThanEqual(String genres,int avgScore);
     Page<Game> findAll(Pageable pageable);
+
 }

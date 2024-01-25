@@ -18,6 +18,9 @@ public interface IUserNeo4jService {
 
     List<UserNeo4j> getFriendsOfFriends(String username);
 
+    List<UserNeo4j> getSuggestedFriends(String username);
+
+    public void addLikeToReview(String username,String id);
 
 
 }

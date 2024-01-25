@@ -29,4 +29,6 @@ public class Review {
     @Field("Like")
     private Like like;
     //RICORDARSI IL CAMPO likeCount
+    @Field("likeCount")
+    private int likeCount;
 }

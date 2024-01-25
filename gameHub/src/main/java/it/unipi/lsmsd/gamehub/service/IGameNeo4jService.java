@@ -11,7 +11,6 @@ import java.util.List;
 public interface IGameNeo4jService {
 
     GameNeo4j getGameByTitle(String id);
-
-    int getGamesIngoingLinks(String name);
+    Integer getGamesIngoingLinks(String name);
     ResponseEntity<List<GameDTO>> getSuggestGames(String userId);
 }

@@ -28,12 +28,22 @@ public class GameNeo4jService implements IGameNeo4jService {
 
     @Override
     public GameNeo4j getGameByTitle(String name) {
-        return gameNeo4jRepository.findGameByName(name);
+        try {
+            return gameNeo4jRepository.findGameByName(name);
+        } catch (Exception e){
+            System.out.println(e.getMessage());
+            return null;
+        }
     }
 
     @Override
-    public int getGamesIngoingLinks(String name) {
-        return gameNeo4jRepository.findGameIngoingLinks(name);
+    public Integer getGamesIngoingLinks(String name) {
+        try {
+            return gameNeo4jRepository.findGameIngoingLinks(name);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return null;
+        }
     }
     @Override
     public ResponseEntity<List<GameDTO>> getSuggestGames(String userId) {
