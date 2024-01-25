@@ -24,4 +24,14 @@ public interface GameNeo4jRepository extends Neo4jRepository<GameNeo4j, String> 
            "AND NOT (giochi:GameNeo4j)<-[:WISHLIST]-(:UserNeo4j {id:$userId})\n" +
            "RETURN giochi")
     List<GameNeo4j> findSuggestGames(@Param("gameId") String gameId, @Param("userId") String userId);
+
+  @Query("MATCH (a:GameNeo4j) WHERE a.name = $name DELETE a")
+  void removeGame(String name);
+  @Query("CREATE (a:GameNeo4j {id: $id, name: $name, developers: $developers, categories: $categories, genres: $genres })")
+  void addGame(String id, String name, String developers, String categories, String genres);
+  @Query("MATCH (a:GameNeo4j {name: $name}) RETURN a")
+  GameNeo4j getGame(String name);
+ //@Query("MERGE (a:GameNeo4j {name: $name}) SET a.name = $name")
+  @Query("MERGE (a:GameNeo4j {name: $name}) SET a.name = $newName, a.developers = $newDevelopers, a.categories = $newCategories, a.genres = $newGenres")
+  void updateGame(String name, String newName, String newDevelopers, String newCategories, String newGenres);
 }

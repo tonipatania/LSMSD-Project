@@ -64,4 +64,17 @@ public class GameNeo4jService implements IGameNeo4jService {
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    public void removeGame(String name) {
+        gameNeo4jRepository.removeGame(name);
+    }
+    public void addGame(String id, String name, String developers, String categories, String genres){
+        gameNeo4jRepository.addGame(id, name, developers, categories, genres);
+    }
+    public GameNeo4j getGame(String name){
+        return gameNeo4jRepository.getGame(name);
+    }
+    public boolean updateGame(String name, String newName, String newDevelopers, String newCategories, String newGenres){
+        gameNeo4jRepository.updateGame(name, newName, newDevelopers, newCategories, newGenres);
+        return false;
+    }
 }

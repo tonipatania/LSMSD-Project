@@ -29,4 +29,25 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
     @Query("MATCH (u:UserNeo4j {username: $username}), (r:ReviewNeo4j {id: $id}) MERGE (u)-[:LIKE]->(r)")
     void addLikeToReview(@Param("username") String username, @Param("id") String id);
 
-}
+
+    @Query("MATCH (a:UserNeo4j {username: $followerUsername}), (b:UserNeo4j {username: $followedUsername}) MERGE (a)-[:FOLLOWS]->(b)")
+    void followUser(String followerUsername, String followedUsername);
+    @Query("MATCH (a:UserNeo4j {username: $followerUsername})-[r:FOLLOWS]->(b:UserNeo4j {username: $followedUsername}) DELETE r")
+    void unfollowUser(String followerUsername, String followedUsername);
+    // Method to add a like based on username and game ID
+    @Query("MATCH (u:UserNeo4j {username: $username}), (g:GameNeo4j {name: $name}) MERGE (u)-[:ADD]->(g)")
+    void likeGame(String username, String name);
+    // Method to remove a like based on username and game ID
+    @Query("MATCH (u:UserNeo4j {username: $username})-[r:ADD]->(g:GameNeo4j {name: $name}) DELETE r")
+    void dislikeGame(String username, String name);
+    //@Query("MATCH (u:UserNeo4j {username: $username})-[r:LIKES]->(g:GameNeo4j {id: $gameId}) DELETE r")
+    @Query("MATCH (a:UserNeo4j) WHERE a.username = $username DELETE a")
+    void removeUser(String username);
+    //@Query("MATCH (a:UserNeo4j) WHERE a.username = '$username' DELETE a")
+    @Query("CREATE (a:UserNeo4j {id: $id, username: $username})")
+    void addUser(String id, String username);
+    @Query("MATCH (a:UserNeo4j {username: $username}) RETURN a")
+    UserNeo4j getUser(String username);
+    @Query("MERGE (a:UserNeo4j {username: $username}) SET a.username = $newUsername")
+    void updateUser(String username, String newUsername);
+ }

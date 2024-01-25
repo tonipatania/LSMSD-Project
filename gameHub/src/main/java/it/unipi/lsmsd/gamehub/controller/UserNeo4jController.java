@@ -8,10 +8,8 @@ import it.unipi.lsmsd.gamehub.service.impl.UserNeo4jService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -29,12 +27,14 @@ public class UserNeo4jController {
         userNeo4jService.SyncUser();
         return ResponseEntity.ok("Sincronizzazione completata");
     }
+
     // to load games from mongo to neo4j
     @PostMapping("/loadgames")
     public ResponseEntity<String> reqGames() {
         userNeo4jService.loadGames();
         return ResponseEntity.ok("Giochi caricati");
     }
+
     @GetMapping("/wishlist")
     public ResponseEntity<List<GameNeo4j>> getUSerWishlist(@RequestParam String username) {
         List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username);
@@ -46,9 +46,9 @@ public class UserNeo4jController {
     }
 
     @PostMapping("/addWishlistGame")
-    public ResponseEntity<String> addGameToWishlist(@RequestParam String username,String name) {
-        userNeo4jService.addGameToWishlist(username,name);
-        if (name!=null) {
+    public ResponseEntity<String> addGameToWishlist(@RequestParam String username, String name) {
+        userNeo4jService.addGameToWishlist(username, name);
+        if (name != null) {
             return ResponseEntity.ok("gioco aggiunto");
         }
         System.out.println("nessun gioco aggiunto");
@@ -56,9 +56,9 @@ public class UserNeo4jController {
     }
 
     @PostMapping("/deleteWishlistGame")
-    public ResponseEntity<String> deleteGameToWishlist(@RequestParam String username,String name) {
-        userNeo4jService.deleteGameToWishlist(username,name);
-        if (name!=null) {
+    public ResponseEntity<String> deleteGameToWishlist(@RequestParam String username, String name) {
+        userNeo4jService.deleteGameToWishlist(username, name);
+        if (name != null) {
             return ResponseEntity.ok("gioco eliminato");
         }
         System.out.println("nessun gioco eliminato");
@@ -76,8 +76,8 @@ public class UserNeo4jController {
     }
 
     @GetMapping("/FriendsOfFriends")
-    public ResponseEntity<List<UserNeo4j>> getFriendsOfFriends(@RequestParam String username){
-        List<UserNeo4j> userNeo4jList=userNeo4jService.getFriendsOfFriends(username);
+    public ResponseEntity<List<UserNeo4j>> getFriendsOfFriends(@RequestParam String username) {
+        List<UserNeo4j> userNeo4jList = userNeo4jService.getFriendsOfFriends(username);
         if (!userNeo4jList.isEmpty()) {
             return ResponseEntity.ok(userNeo4jList);
         }
@@ -87,8 +87,8 @@ public class UserNeo4jController {
 
     //Query per amici suggeriti
     @GetMapping("/SuggestFriends")
-    public ResponseEntity<List<UserNeo4j>> getSuggestFriends(@RequestParam String username){
-        List<UserNeo4j> userNeo4jList=userNeo4jService.getSuggestedFriends(username);
+    public ResponseEntity<List<UserNeo4j>> getSuggestFriends(@RequestParam String username) {
+        List<UserNeo4j> userNeo4jList = userNeo4jService.getSuggestedFriends(username);
         if (!userNeo4jList.isEmpty()) {
             return ResponseEntity.ok(userNeo4jList);
         }
@@ -98,16 +98,80 @@ public class UserNeo4jController {
 
     //DA CAPIRE SE MODIFICARE ANCHE IL CAMPO likeCount in mongo
     @PostMapping("/addLikeReview")
-    public ResponseEntity<String> addLikeToReview(@RequestParam String username,String id) {
-        userNeo4jService.addGameToWishlist(username,id);
-        if (id!=null) {
+    public ResponseEntity<String> addLikeToReview(@RequestParam String username, String id) {
+        userNeo4jService.addGameToWishlist(username, id);
+        if (id != null) {
             return ResponseEntity.ok("like aggiunto");
         }
         System.out.println("nessun like aggiunto");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //Query per amici suggeriti
+    @PostMapping("/follow")
+    public ResponseEntity<String> followUser(@RequestParam String followerUsername, @RequestParam String followedUsername) {
+        userNeo4jService.followUser(followerUsername, followedUsername);
+        return ResponseEntity.ok("Followed successfully");
+    }
+
+    @PostMapping("/unfollow")
+    public ResponseEntity<String> unfollowUser(@RequestParam String followerUsername, @RequestParam String followedUsername) {
+        userNeo4jService.unfollowUser(followerUsername, followedUsername);
+        return ResponseEntity.ok("Unfollowed successfully");
+    }
+
+    // Endpoint to like a game
+    @PostMapping("/like")
+    public ResponseEntity<String> likeGame(@RequestParam String username, @RequestParam String name) {
+        userNeo4jService.likeGame(username, name);
+        return ResponseEntity.ok("Added successfully");
+    }
+
+    // Endpoint to dislike a game
+    @DeleteMapping("/dislike")
+    public ResponseEntity<String> dislikeGame(@RequestParam String username, @RequestParam String name) {
+        userNeo4jService.dislikeGame(username, name);
+        return ResponseEntity.ok("Removed successfully");
+    }
+
+    //remove user
+    @DeleteMapping("/removeUser")
+    public ResponseEntity<String> removeUser(@RequestParam String username) {
+        userNeo4jService.removeUser(username);
+        return ResponseEntity.ok("User Removed");
+    }
+
+    //add new user
+    @PostMapping("/addUser")
+    public ResponseEntity<String> addUser(@RequestParam String id, @RequestParam String username) {
+        userNeo4jService.addUser(id, username);
+        return ResponseEntity.ok("User Added");
+    }
+
+    //get id and username
+    @GetMapping("/getUser")
+    public ResponseEntity<UserNeo4j> getUser(@RequestParam String username) {
+        UserNeo4j user = userNeo4jService.getUser(username);
+
+        if (user != null) {
+            return ResponseEntity.ok(user);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    //update username on the basis of old username
+    @PutMapping("/updateUser")
+    public ResponseEntity<String> updateUser(@RequestParam String username, @RequestParam String newUsername) {
+        boolean updated = userNeo4jService.updateUser(username, newUsername);
+
+        if (updated) {
+            return ResponseEntity.ok("User Updated");
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+
+
+        //Query per amici suggeriti
     /*@GetMapping("/SuggestFriends")
     public ResponseEntity<List<UserNeo4j>> getSuggestUsers(@RequestParam String username){
 
@@ -153,4 +217,5 @@ public class UserNeo4jController {
         System.out.println("gamelist empty");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }*/
+    }
 }

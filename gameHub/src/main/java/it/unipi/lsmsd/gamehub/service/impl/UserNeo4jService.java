@@ -1,6 +1,5 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
-import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.User;
@@ -13,8 +12,6 @@ import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -163,6 +160,36 @@ public class UserNeo4jService implements IUserNeo4jService {
         }catch (Exception e){
             System.out.println(e.getMessage());
         }
+    }
+
+    @Override
+    public void followUser(String followerUsername, String followedUsername) {
+        userNeo4jRepository.followUser(followerUsername, followedUsername);
+    }
+    @Override
+    public void unfollowUser(String followerUsername, String followedUsername) {
+        userNeo4jRepository.unfollowUser(followerUsername, followedUsername);
+    }
+    public void likeGame(String username, String name) {
+        // You can add additional business logic here if needed
+        userNeo4jRepository.likeGame(username, name);
+    }
+    public void dislikeGame(String username, String name) {
+        // You can add additional business logic here if needed
+        userNeo4jRepository.dislikeGame(username, name);
+    }
+    public void removeUser(String username) {
+        userNeo4jRepository.removeUser(username);
+    }
+    public void addUser(String id, String username){
+        userNeo4jRepository.addUser(id, username);
+    }
+    public UserNeo4j getUser(String username){
+        return userNeo4jRepository.getUser(username);
+    }
+    public boolean updateUser(String username, String newUsername){
+        userNeo4jRepository.updateUser(username, newUsername);
+        return false;
     }
 
 }
