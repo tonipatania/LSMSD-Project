@@ -23,4 +23,12 @@ public interface IUserNeo4jService {
     public void addLikeToReview(String username,String id);
 
 
+    void followUser(String followerUsername, String followedUsername);
+    void unfollowUser(String followerUsername, String followedUsername);
+    public void likeGame(String username, String name);
+    public void dislikeGame(String username, String name);
+    public void removeUser(String username);
+    public void addUser(String id, String username);
+    public UserNeo4j getUser(String username);
+    boolean updateUser(String username, String newUsername);
 }
