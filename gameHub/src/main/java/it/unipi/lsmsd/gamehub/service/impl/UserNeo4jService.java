@@ -12,6 +12,9 @@ import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -47,33 +50,6 @@ public class UserNeo4jService implements IUserNeo4jService {
         gameNeo4jRepository.saveAll(graphGames);
     }
 
-    @Override
-    public List<GameNeo4j> getUserWishlist(String username) {
-        try {
-            return userNeo4jRepository.findByUsername(username);
-        }catch (Exception e){
-            System.out.println(e.getMessage());
-            return null;
-        }
-    }
-
-    @Override
-    public void addGameToWishlist(String username, String name) {
-        try {
-            userNeo4jRepository.addGameToUser(username, name);
-        }catch (Exception e){
-            System.out.println(e.getMessage());
-        }
-    }
-
-    @Override
-    public void deleteGameToWishlist(String username, String name) {
-        try {
-            userNeo4jRepository.deleteGameFromUser(username, name);
-        }catch (Exception e){
-            System.out.println(e.getMessage());
-        }
-    }
 
     @Override
     public List<UserNeo4j> getFollowedUser(String username) {
@@ -170,26 +146,31 @@ public class UserNeo4jService implements IUserNeo4jService {
     public void unfollowUser(String followerUsername, String followedUsername) {
         userNeo4jRepository.unfollowUser(followerUsername, followedUsername);
     }
-    public void likeGame(String username, String name) {
-        // You can add additional business logic here if needed
-        userNeo4jRepository.likeGame(username, name);
-    }
-    public void dislikeGame(String username, String name) {
-        // You can add additional business logic here if needed
-        userNeo4jRepository.dislikeGame(username, name);
-    }
+
     public void removeUser(String username) {
         userNeo4jRepository.removeUser(username);
     }
-    public void addUser(String id, String username){
-        userNeo4jRepository.addUser(id, username);
+    public ResponseEntity<String> addUser(String id, String username){
+        try {
+            userNeo4jRepository.addUser(id, username);
+            return new ResponseEntity<>("successfully registered user", HttpStatus.CREATED);
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>("Error in interaction with Neo4j" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
     }
     public UserNeo4j getUser(String username){
         return userNeo4jRepository.getUser(username);
     }
-    public boolean updateUser(String username, String newUsername){
-        userNeo4jRepository.updateUser(username, newUsername);
-        return false;
+    public ResponseEntity<String> updateUser(String username, String newUsername){
+        try {
+            userNeo4jRepository.updateUser(username, newUsername);
+            return new ResponseEntity<>("username correctly updated", HttpStatus.OK);
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>("error in updating username in neo4j: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
 }

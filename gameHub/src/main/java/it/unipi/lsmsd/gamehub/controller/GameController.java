@@ -8,6 +8,7 @@ import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
+import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@RequestMapping("game")
 @RestController
 public class GameController {
     @Autowired
@@ -27,6 +29,8 @@ public class GameController {
     @Autowired
     private ILoginService iLoginService;
 
+    @Autowired
+    GameNeo4jService gameNeo4jService;
     @GetMapping("/searchFilter")
     public ResponseEntity<List<Game>> retrieveGamesByParameters(@RequestBody GameDTO gameDTO) {
         List<Game> gameList = gameService.retrieveGamesByParameters(gameDTO);
@@ -37,7 +41,7 @@ public class GameController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    @GetMapping("/gameAggr1")
+    @GetMapping("/aggr1")
     public ResponseEntity<List<GameDTOAggregation>> retrieveAggregateGamesByGenresAndSortByScore() {
         List<GameDTOAggregation> gameList = gameService.retrieveAggregateGamesByGenresAndSortByScore();
 
@@ -48,7 +52,7 @@ public class GameController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    @GetMapping("/gameAggr2")
+    @GetMapping("/aggr2")
     public ResponseEntity<List<GameDTOAggregation2>> findAggregation() {
         List<GameDTOAggregation2> gameList = gameService.findAggregation4();
 
@@ -73,7 +77,7 @@ public class GameController {
         return ResponseEntity.ok(gameDTOPage);
     }
 
-    @GetMapping("/updateGameReview")
+    @PatchMapping("/updateGameReview")
     public ResponseEntity<List<Review>> updateGameReview(@RequestBody ReviewDTO reviewDTO) {
         List<Review> reviewList = gameService.updateGameReview(reviewDTO,20);
         if (!reviewList.isEmpty()) {
@@ -84,34 +88,53 @@ public class GameController {
     }
 
     @PostMapping("/create/{userId}")
-    public ResponseEntity<Object> createGame(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
+    public ResponseEntity<String> createGame(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
         // controllo se si tratta di admin
-        ResponseEntity<Object> responseEntity= iLoginService.roleUser(userId);
-        if(responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
+        if(responseEntity.getStatusCode() != HttpStatus.OK) {
             return responseEntity;
         }
-        else if (responseEntity.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
+        // aggiungo il gioco in mongo
+        responseEntity = gameService.createGame(gameDTO);
+        if(responseEntity.getStatusCode() != HttpStatus.CREATED)
             return responseEntity;
-        }
-
-        GameDTO game = gameService.createGame(gameDTO);
-        return new ResponseEntity<>(game, HttpStatus.CREATED);
+        // aggiungo il gioco su neo4j
+        ResponseEntity<String> response = gameNeo4jService.addGame(responseEntity.getBody(), gameDTO.getName());
+        if(response.getStatusCode() == HttpStatus.CREATED)
+            return response;
+        // eliminare gioco in mongo
+        return gameService.deleteGame(responseEntity.getBody());
     }
     @DeleteMapping("/delete/{userId}")
-    public ResponseEntity<Object> deleteGame(@PathVariable String userId, @RequestParam String gameId) {
+    public ResponseEntity<String> deleteGame(@PathVariable String userId, @RequestParam String gameId) {
         // controllo se si tratta di admin
-        ResponseEntity<Object> responseEntity= iLoginService.roleUser(userId);
-        if(responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
+        if(responseEntity.getStatusCode() != HttpStatus.OK) {
             return responseEntity;
         }
-        else if (responseEntity.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
+        // cancello in mongo
+        responseEntity = gameService.deleteGame(gameId);
+        if(responseEntity.getStatusCode() != HttpStatus.OK) {
             return responseEntity;
         }
-
-        gameService.deleteGame(gameId);
-        return ResponseEntity.ok().build();
+        // cancello in neo4j
+        return gameNeo4jService.removeGame(gameId);
     }
 
+    @GetMapping("/getGamesIngoingLinks")
+    public ResponseEntity<Integer> getGamesIngoingLinks(@RequestParam String name) {
+        Integer countLinks= gameNeo4jService.getGamesIngoingLinks(name);
+        if (countLinks!=null) {
+            return ResponseEntity.ok(countLinks);
+        }
+        System.out.println("gamelist empty");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+    @GetMapping("/suggestGames/{userId}")
+    public ResponseEntity<List<GameDTO>> suggestGames(@PathVariable String userId) {
+        //return gameNeo4jService.getSuggestGames(userId);
+        return null;
+    }
 
 }
 

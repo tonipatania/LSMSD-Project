@@ -26,9 +26,6 @@ public class Review {
     private String comment;
     @Field("Username")
     private String username;
-    @Field("Like")
-    private Like like;
-    //RICORDARSI IL CAMPO likeCount
     @Field("likeCount")
     private int likeCount;
 }

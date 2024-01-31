@@ -13,6 +13,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.GroupOperation;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -84,7 +86,6 @@ public class ReviewService implements IReviewService {
                 // mappare model in dto
                 ReviewDTO reviewInserted = modelMapper.map(saved, ReviewDTO.class);
                 return reviewInserted;
-
             }
             return null;
         }catch (Exception e) {
@@ -94,11 +95,12 @@ public class ReviewService implements IReviewService {
     }
 
     @Override
-    public void deleteReview(String id) {
+    public ResponseEntity<String> deleteReview(String id) {
         try {
             reviewRepository.deleteById(id);
+            return new ResponseEntity<>("review deleted", HttpStatus.OK);
         }catch (Exception e) {
-            System.out.println("Errore nella creazione del gioco: " + e.getMessage());
+            return new ResponseEntity<>("Error in deleting the review: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

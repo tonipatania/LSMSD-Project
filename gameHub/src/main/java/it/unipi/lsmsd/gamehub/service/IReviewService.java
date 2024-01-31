@@ -4,6 +4,7 @@ import it.unipi.lsmsd.gamehub.DTO.*;
 import it.unipi.lsmsd.gamehub.model.Review;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -18,7 +19,7 @@ public interface IReviewService {
     public List<Review> retrieveByTitleOrderByLikeCountDesc(ReviewDTO reviewDTO,int limit);
 
     public ReviewDTO createReview(ReviewDTO review);
-    public void deleteReview(String id);
+    public ResponseEntity<String> deleteReview(String id);
 
 
 

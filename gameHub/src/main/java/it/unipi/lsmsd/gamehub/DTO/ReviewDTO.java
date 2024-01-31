@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @ToString
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ReviewDTO {
+    private String id;
     private String title;
     //aggiunti questi
     private int userScore;

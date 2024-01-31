@@ -1,10 +1,10 @@
 package it.unipi.lsmsd.gamehub.controller;
 
-import it.unipi.lsmsd.gamehub.DTO.GameWishlistDTO;
+import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.service.IInteractionGameService;
+import it.unipi.lsmsd.gamehub.service.impl.UserNeo4jService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,16 +16,23 @@ public class InteractionGameController {
     @Autowired
     private IInteractionGameService iInteractionGameService;
 
-    @PatchMapping("/addGame/{userId}")
-    public ResponseEntity<Object> addGame(@PathVariable String userId, @RequestParam( name = "idGame") String idGame, @RequestParam(name = "nameGame") String nameGame) {
-        return iInteractionGameService.addGame(userId, idGame, nameGame);
+    @GetMapping("/view")
+    public ResponseEntity<List<GameNeo4j>> getUSerWishlist(@RequestParam String username) {
+        List<GameNeo4j> gameList = iInteractionGameService.getUserWishlist(username);
+        if (!gameList.isEmpty()) {
+            return ResponseEntity.ok(gameList);
+        }
+        System.out.println("gamelist empty");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
-    @GetMapping("/view/{userId}")
-    public ResponseEntity<List<GameWishlistDTO>> viewWishlist(@PathVariable String userId) {
-        return iInteractionGameService.getWishlist(userId);
+
+    @PostMapping("/addGame")
+    public ResponseEntity<String> addGameToWishlist(@RequestParam String username, String name) {
+        return iInteractionGameService.addGameToWishlist(username, name);
     }
-    @PatchMapping("/removeGame/{userId}")
-    public ResponseEntity<Object> removeGame(@PathVariable String userId, @RequestParam int index) {
-        return iInteractionGameService.removeGameWishlist(userId, index);
+
+    @PostMapping("/deleteGame")
+    public ResponseEntity<String> deleteGameToWishlist(@RequestParam String username, String name) {
+        return iInteractionGameService.deleteGameToWishlist(username, name);
     }
 }

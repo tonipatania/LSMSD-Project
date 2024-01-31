@@ -16,6 +16,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -69,8 +71,6 @@ public class GameService implements IGameService {
             System.out.println(e.getMessage());
             return null;
         }
-
-
     }
 
     @Override
@@ -148,7 +148,7 @@ public class GameService implements IGameService {
     }
 
     @Override
-    public GameDTO createGame(GameDTO gameDTO) {
+    public ResponseEntity<String> createGame(GameDTO gameDTO) {
         // converto il dto in model entity
         ModelMapper modelMapper = new ModelMapper();
         Game game = modelMapper.map(gameDTO, Game.class);
@@ -157,20 +157,21 @@ public class GameService implements IGameService {
             Game saved = gameRepository.save(game);
             // mappare model in dto
             GameDTO gameInserted = modelMapper.map(saved, GameDTO.class);
-            return gameInserted;
+            return new ResponseEntity<>(gameInserted.getId(), HttpStatus.CREATED);
         }
         catch (Exception e) {
-            System.out.println("Errore nella creazione del gioco: " + e.getMessage());
-            return null;
+            System.out.println("Error in game creation: " + e.getMessage());
+            return new ResponseEntity<>("Error in game creation: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
     @Override
-    public void deleteGame(String id) {
-        // aggiungere logica di errore
-        gameRepository.deleteById(id);
+    public ResponseEntity<String> deleteGame(String id) {
+        try {
+            gameRepository.deleteById(id);
+            return new ResponseEntity<>("game deleted", HttpStatus.OK);
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>("deletion error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
-
-
-
-
 }
