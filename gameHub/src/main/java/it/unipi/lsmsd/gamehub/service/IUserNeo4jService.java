@@ -8,7 +8,8 @@ public interface IUserNeo4jService {
     public void SyncUser();
     public void loadGames();
 
-    public List<GameNeo4j> getUserWishlist(String username);
+    //DA MODIFICARE NEL MAIN->TROVA LA LISTA DI GIOCHI DEGLI AMICI
+    public List<GameNeo4j> getUserWishlist(String username,String friendUsername);
 
     public void addGameToWishlist(String username,String name);
 
@@ -20,7 +21,15 @@ public interface IUserNeo4jService {
 
     List<UserNeo4j> getSuggestedFriends(String username);
 
-    public void addLikeToReview(String username,String id);
+   // public void addLikeToReview(String username,String id);
+
+
+    //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW
+    public boolean addLikeToReview(String username,String id);
+
+    //AGGIUNGERE NEL MAIN-> FUNZIONE CHE CONTA IL NUMERO TOTALE DI UTENTI
+    public long countUserDocument();
+
 
 
 }
