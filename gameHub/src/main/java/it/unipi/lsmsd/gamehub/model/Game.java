@@ -36,12 +36,10 @@ public class Game {
     private int avgScore;
     @Field("Price")
     private double price;
-
     @Field("About the game")
     private String aboutTheGame;
     @Field("Supported languages")
     private String supportedLanguages;
-
     @Field("Developers")
     private String developers;
     @Field("Publishers")
