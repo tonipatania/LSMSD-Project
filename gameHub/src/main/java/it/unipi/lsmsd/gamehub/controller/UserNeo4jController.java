@@ -21,11 +21,13 @@ import java.util.stream.Collectors;
 public class UserNeo4jController {
     @Autowired
     private UserNeo4jService userNeo4jService;
-    @Autowired
-    private GameNeo4jService gameNeo4jService;
+
 
     @Autowired
     private ILoginService iLoginService;
+
+
+    // to load user from mongo to neo4j
 
     @PostMapping("/sync")
     public ResponseEntity<String> syncUser() {
@@ -33,7 +35,16 @@ public class UserNeo4jController {
         return ResponseEntity.ok("Sincronizzazione completata");
     }
 
+
     //DA MODIFICARE NEL MAIN->TROVA LA LISTA DI GIOCHI DEGLI AMICI(DA MODIFICARE ANCHE SERVICE E REPOSITORY)
+
+    // to load games from mongo to neo4j
+    @PostMapping("/loadgames")
+    public ResponseEntity<String> reqGames() {
+        userNeo4jService.loadGames();
+        return ResponseEntity.ok("Giochi caricati");
+    }
+
     @GetMapping("/wishlist")
     public ResponseEntity<List<GameNeo4j>> getUSerWishlist(@RequestParam String username, String friendUsername) {
         List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username,friendUsername);
@@ -106,6 +117,7 @@ public class UserNeo4jController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }*/
 
+
     //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW(DA MODIFICARE SIA IN SERVICE CHE REPOSITORY)
     @PostMapping("/addLikeReview")
     public ResponseEntity<String> addLikeToReview(@RequestParam String username,String id) {
@@ -115,12 +127,6 @@ public class UserNeo4jController {
         }
         System.out.println("nessun like aggiunto");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
-
-    @PostMapping("/loadgames")
-    public ResponseEntity<String> reqGames() {
-        userNeo4jService.loadGames();
-        return ResponseEntity.ok("Giochi caricati");
     }
 
     //DA AGGIUNGERE NEL MAIN-> CONTA IL NUMERO TOTALE DI GIOCHI E PUò FARLO SOLO L'ADMIN(AGGIUNGERE PARTI ANCHE DEL SERVICE)
@@ -137,5 +143,6 @@ public class UserNeo4jController {
         long count= userNeo4jService.countUserDocument();
         return ResponseEntity.ok(count);
     }
+
 
 }
