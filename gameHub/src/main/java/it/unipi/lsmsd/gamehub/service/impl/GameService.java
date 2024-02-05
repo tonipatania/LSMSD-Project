@@ -167,7 +167,22 @@ public class GameService implements IGameService {
     @Override
     public void deleteGame(String id) {
         // aggiungere logica di errore
-        gameRepository.deleteById(id);
+        try {
+            gameRepository.deleteById(id);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+    }
+
+    //AGGIUNGERE NEL MAIN-> FUNZIONE CHE CONTA IL NUMERO TOTALE DI GIOCHI(UTILIZZO IL METODO COUNT DI MONGO REPOSITORY)
+    @Override
+    public long countGameDocument(){
+        try {
+            return gameRepository.count();
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return -1;
+        }
     }
 
 
