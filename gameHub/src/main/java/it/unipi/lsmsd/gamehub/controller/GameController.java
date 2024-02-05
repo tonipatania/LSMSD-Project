@@ -83,6 +83,30 @@ public class GameController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    //FUNZIONE PER UPDATE DI TUTTI I GIOCHI
+    /*@PostMapping("/updateAllGameReview")
+    public ResponseEntity<Integer> updateAllGameReview(@PageableDefault(sort = { "id" }, size = 1000) Pageable pageable) {
+        int successfulUpdates=0;
+        Page<GameDTO> gameDTOPage = gameService.getAll(pageable);
+        for (GameDTO gameDTO : gameDTOPage.getContent()) {
+            String gameName = gameDTO.getName();
+            ReviewDTO reviewDTO=new ReviewDTO();
+            reviewDTO.setTitle(gameName);
+
+            List<Review> reviewList = gameService.updateGameReview(reviewDTO,20);
+            if (!reviewList.isEmpty()) {
+                successfulUpdates++;
+            }
+
+        }
+        if (successfulUpdates > 0) {
+            return ResponseEntity.ok(successfulUpdates);
+        } else {
+            System.out.println("No successful updates");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }*/
+
     @PostMapping("/create/{userId}")
     public ResponseEntity<Object> createGame(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
         // controllo se si tratta di admin
@@ -110,6 +134,21 @@ public class GameController {
 
         gameService.deleteGame(gameId);
         return ResponseEntity.ok().build();
+    }
+
+    //DA AGGIUNGERE NEL MAIN-> CONTA IL NUMERO TOTALE DI GIOCHI E PUò FARLO SOLO L'ADMIN(AGGIUNGERE PARTI ANCHE DEL SERVICE)
+    @GetMapping("/countGame/{userId}")
+    public ResponseEntity<Object> countGame(@PathVariable String userId){
+        ResponseEntity<Object> responseEntity= iLoginService.roleUser(userId);
+        if(responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+            return responseEntity;
+        }
+        else if (responseEntity.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
+            return responseEntity;
+        }
+
+        long count= gameService.countGameDocument();
+        return ResponseEntity.ok(count);
     }
 
 
