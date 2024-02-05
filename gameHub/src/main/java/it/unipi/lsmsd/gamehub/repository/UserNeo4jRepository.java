@@ -10,8 +10,10 @@ import java.util.List;
 
 @Repository
 public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> {
-  // @Query("MATCH (u:UserNeo4j)-[:ADD]->(g:GameNeo4j) WHERE u.username = $username RETURN g")
-   @Query("MATCH (u:UserNeo4j)-[:ADD]->(g:GameNeo4j) WHERE u.username = $username RETURN g.id as id, g.name as name, g.developers as developers, g.categories as categories, g.genres as genres")
+
+
+  //DA MODIFICARE NEL MAIN->TROVA LA LISTA DI GIOCHI DEGLI AMICI
+   @Query("MATCH (u:UserNeo4j)-[:ADD]->(g:GameNeo4j) WHERE u.username = $username RETURN g.id as id, g.name as name")
    List<GameNeo4j> findByUsername(@Param("username") String username);
 
     @Query("MATCH (u:UserNeo4j {username: $username}), (g:GameNeo4j {name: $name}) MERGE (u)-[:ADD]->(g)")
@@ -26,7 +28,14 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
     @Query("MATCH (u:UserNeo4j {username: $username})-[:FOLLOW]->()-[:FOLLOW]->(friends) RETURN DISTINCT friends;")
     List<UserNeo4j> findFriendsOfFriends (@Param("username") String username);
 
-    @Query("MATCH (u:UserNeo4j {username: $username}), (r:ReviewNeo4j {id: $id}) MERGE (u)-[:LIKE]->(r)")
-    void addLikeToReview(@Param("username") String username, @Param("id") String id);
+    /*@Query("MATCH (u:UserNeo4j {username: $username}), (r:ReviewNeo4j {id: $id}) MERGE (u)-[:LIKE]->(r)")
+    void addLikeToReview(@Param("username") String username, @Param("id") String id);*/
+
+    //QUESTA è LA VERA FUNZIONE CHE VEDE SE ESISTE GIà IL LIKE ALLE REVIEW(DA AGGIUNGERE NEL MAIN)
+ //@Query("MATCH (u:UserNeo4j {username:$username}) MATCH (g:ReviewNeo4j {id: $id}) OPTIONAL MATCH (u)-[r:LIKE]->(g) WITH u, g, r MERGE (u)-[:LIKE]->(g) RETURN r IS NOT NULL AS relationshipExists")
+
+ //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW
+ @Query("MATCH (u:UserNeo4j {username:$username}), (g:ReviewNeo4j {id: $id}) OPTIONAL MATCH (u)-[r:LIKE]->(g) WITH u, g, r MERGE (u)-[:LIKE]->(g) RETURN r IS NOT NULL AS relationshipExists")
+    Boolean addLikeToReview(@Param("username") String username, @Param("id") String id);
 
 }
