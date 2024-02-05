@@ -3,15 +3,14 @@ package it.unipi.lsmsd.gamehub.controller;
 
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
+import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
 import it.unipi.lsmsd.gamehub.service.impl.UserNeo4jService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -25,15 +24,19 @@ public class UserNeo4jController {
     @Autowired
     private GameNeo4jService gameNeo4jService;
 
+    @Autowired
+    private ILoginService iLoginService;
+
     @PostMapping("/sync")
     public ResponseEntity<String> syncUser() {
         userNeo4jService.SyncUser();
         return ResponseEntity.ok("Sincronizzazione completata");
     }
 
+    //DA MODIFICARE NEL MAIN->TROVA LA LISTA DI GIOCHI DEGLI AMICI(DA MODIFICARE ANCHE SERVICE E REPOSITORY)
     @GetMapping("/wishlist")
-    public ResponseEntity<List<GameNeo4j>> getUSerWishlist(@RequestParam String username) {
-        List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username);
+    public ResponseEntity<List<GameNeo4j>> getUSerWishlist(@RequestParam String username, String friendUsername) {
+        List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username,friendUsername);
         if (!gameList.isEmpty()) {
             return ResponseEntity.ok(gameList);
         }
@@ -92,8 +95,8 @@ public class UserNeo4jController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //DA CAPIRE SE MODIFICARE ANCHE IL CAMPO likeCount in mongo
-    @PostMapping("/addLikeReview")
+
+   /* @PostMapping("/addLikeReview")
     public ResponseEntity<String> addLikeToReview(@RequestParam String username,String id) {
         userNeo4jService.addGameToWishlist(username,id);
         if (id!=null) {
@@ -101,59 +104,38 @@ public class UserNeo4jController {
         }
         System.out.println("nessun like aggiunto");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
-
-    //Query per amici suggeriti
-    /*@GetMapping("/SuggestFriends")
-    public ResponseEntity<List<UserNeo4j>> getSuggestUsers(@RequestParam String username){
-
-        //get the user followed by the username
-        List<UserNeo4j> followedUser=userNeo4jService.getFollowedUser(username);
-        //get the user wishlist by the username
-        List<GameNeo4j> addedGames=userNeo4jService.getUserWishlist(username);
-        //get the list of friends of the followed users
-        List<UserNeo4j> friendsOfFriends=userNeo4jService.getFriendsOfFriends(username);
-
-        // Generate a list of friends of friends not in the followedUser list
-        List<UserNeo4j> resultFriendsOfFriends = friendsOfFriends.stream()
-                .filter(friend -> followedUser.stream().noneMatch(f -> f.getUsername().equals(friend.getUsername())))
-                //.limit(2)
-                .collect(Collectors.toList());
-
-        //final result
-        List<UserNeo4j> suggestedFriends=new ArrayList<>();
-
-
-        for(int i=0;i<resultFriendsOfFriends.size();i++){
-            List<GameNeo4j> friendOfFriendWishlist=userNeo4jService.getUserWishlist(resultFriendsOfFriends.get(i).getUsername());
-            Set<String> friendOfFriendGameNames = friendOfFriendWishlist.stream()
-                    .map(GameNeo4j::getName)
-                    .collect(Collectors.toSet());
-
-            // Compare the two sets and count the common games
-            long commonGamesCount = addedGames.stream()
-                    .map(GameNeo4j::getName)
-                    .filter(friendOfFriendGameNames::contains)
-                    .distinct()
-                    .count();
-
-            // If there are 5 or more common games, add the user to a userlist
-            if (commonGamesCount >= 5) {
-                suggestedFriends.add(resultFriendsOfFriends.get(i));
-            }
-        }
-
-        if (!suggestedFriends.isEmpty()) {
-            return ResponseEntity.ok(suggestedFriends);
-        }
-        System.out.println("gamelist empty");
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }*/
+
+    //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW(DA MODIFICARE SIA IN SERVICE CHE REPOSITORY)
+    @PostMapping("/addLikeReview")
+    public ResponseEntity<String> addLikeToReview(@RequestParam String username,String id) {
+        boolean likeAdded=userNeo4jService.addLikeToReview(username,id);
+        if (id!=null && likeAdded) {
+            return ResponseEntity.ok("like aggiunto");
+        }
+        System.out.println("nessun like aggiunto");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
 
     @PostMapping("/loadgames")
     public ResponseEntity<String> reqGames() {
         userNeo4jService.loadGames();
         return ResponseEntity.ok("Giochi caricati");
+    }
+
+    //DA AGGIUNGERE NEL MAIN-> CONTA IL NUMERO TOTALE DI GIOCHI E PUò FARLO SOLO L'ADMIN(AGGIUNGERE PARTI ANCHE DEL SERVICE)
+    @GetMapping("/countUser/{userId}")
+    public ResponseEntity<Object> countGame(@PathVariable String userId){
+        ResponseEntity<Object> responseEntity= iLoginService.roleUser(userId);
+        if(responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+            return responseEntity;
+        }
+        else if (responseEntity.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
+            return responseEntity;
+        }
+
+        long count= userNeo4jService.countUserDocument();
+        return ResponseEntity.ok(count);
     }
 
 }
