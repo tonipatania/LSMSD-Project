@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class LoginController {
     @Autowired
     private ILoginService loginService;
+
+    //tengo locale
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginDTO loginDTO) {
         AuthResponse authResponse = loginService.authenticate(loginDTO);
@@ -25,7 +27,8 @@ public class LoginController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(authResponse);
         }
     }
-    // cerca di esserci
+
+    //tengo remota
     @PostMapping("/signup")
     public ResponseEntity<String> registration(@RequestBody RegistrationDTO registrationDTO){
         if(loginService.registrate(registrationDTO)){

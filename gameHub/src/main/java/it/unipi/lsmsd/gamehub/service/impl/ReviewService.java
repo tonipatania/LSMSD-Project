@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.GroupOperation;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -31,7 +32,7 @@ public class ReviewService implements IReviewService {
             if(reviewDTO.getTitle()!=null){
                 return reviewRepository.findByTitle(reviewDTO.getTitle());
             }
-            return null;
+            return Collections.emptyList();
         }catch (Exception e){
             System.out.println(e.getMessage());
             return null;

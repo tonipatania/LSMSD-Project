@@ -38,4 +38,7 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
  @Query("MATCH (u:UserNeo4j {username:$username}), (g:ReviewNeo4j {id: $id}) OPTIONAL MATCH (u)-[r:LIKE]->(g) WITH u, g, r MERGE (u)-[:LIKE]->(g) RETURN r IS NOT NULL AS relationshipExists")
     Boolean addLikeToReview(@Param("username") String username, @Param("id") String id);
 
+ @Query("MATCH (user:UserNeo4j{username:$username})-[like:LIKE]->(review:ReviewNeo4j{id: $id}) DELETE like")
+ void deleteLikeFromReview(@Param("username") String username, @Param("id") String id);
+
 }

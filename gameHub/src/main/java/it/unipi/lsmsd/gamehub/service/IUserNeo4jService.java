@@ -11,9 +11,9 @@ public interface IUserNeo4jService {
     //DA MODIFICARE NEL MAIN->TROVA LA LISTA DI GIOCHI DEGLI AMICI
     public List<GameNeo4j> getUserWishlist(String username,String friendUsername);
 
-    public void addGameToWishlist(String username,String name);
+    public Boolean addGameToWishlist(String username,String name);
 
-    public void deleteGameToWishlist(String username,String name);
+    public Boolean deleteGameToWishlist(String username,String name);
 
     List<UserNeo4j> getFollowedUser(String username);
 
@@ -25,7 +25,7 @@ public interface IUserNeo4jService {
 
 
     //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW
-    public boolean addLikeToReview(String username,String id);
+    public Boolean addLikeToReview(String username,String id);
 
     //AGGIUNGERE NEL MAIN-> FUNZIONE CHE CONTA IL NUMERO TOTALE DI UTENTI
     public long countUserDocument();

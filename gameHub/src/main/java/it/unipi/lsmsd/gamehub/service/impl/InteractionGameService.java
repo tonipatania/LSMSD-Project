@@ -14,10 +14,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-
+//rengo da remoto
 @Service
 public class InteractionGameService implements IInteractionGameService {
-    @Autowired
+   /* @Autowired
     private LoginRepository loginRepository;
     @Override
     public ResponseEntity<Object> addGame(String userId, String idGame, String nameGame) {
@@ -76,5 +76,5 @@ public class InteractionGameService implements IInteractionGameService {
             System.out.println("Errore durante la modifica su MongoDB: " + e.getMessage());
             return new ResponseEntity<>("Errore di interazione col database", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-    }
+    }*/
 }

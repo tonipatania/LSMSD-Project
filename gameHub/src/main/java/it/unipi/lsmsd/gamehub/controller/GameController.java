@@ -8,6 +8,7 @@ import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
+import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,38 +28,52 @@ public class GameController {
     @Autowired
     private ILoginService iLoginService;
 
-    @GetMapping("/searchFilter")
-    public ResponseEntity<List<Game>> retrieveGamesByParameters(@RequestBody GameDTO gameDTO) {
+
+    @Autowired
+    private GameNeo4jService gameNeo4jService;
+
+    //tengo locale
+    @GetMapping("/searchFilter/{userId}")
+    public ResponseEntity<Object> retrieveGamesByParameters(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
         List<Game> gameList = gameService.retrieveGamesByParameters(gameDTO);
-        if (!gameList.isEmpty()) {
+        if (gameList!=null && !gameList.isEmpty()) {
             return ResponseEntity.ok(gameList);
+        }else if(gameList!=null && gameList.isEmpty()) {
+            return ResponseEntity.ok("gameList empty");
+
         }
-        System.out.println("gamelist empty");
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    //tengo locale
     @GetMapping("/gameAggr1")
-    public ResponseEntity<List<GameDTOAggregation>> retrieveAggregateGamesByGenresAndSortByScore() {
+    public ResponseEntity<Object> retrieveAggregateGamesByGenresAndSortByScore() {
         List<GameDTOAggregation> gameList = gameService.retrieveAggregateGamesByGenresAndSortByScore();
 
-        if (!gameList.isEmpty()) {
+        if (gameList!=null && !gameList.isEmpty()) {
             return ResponseEntity.ok(gameList);
+        }else if(gameList!=null && gameList.isEmpty()) {
+            return ResponseEntity.ok("gameList empty");
         }
-        System.out.println("gamelist empty");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    //tengo locale
     @GetMapping("/gameAggr2")
-    public ResponseEntity<List<GameDTOAggregation2>> findAggregation() {
+    public ResponseEntity<Object> findAggregation() {
         List<GameDTOAggregation2> gameList = gameService.findAggregation4();
 
-        if (!gameList.isEmpty()) {
+        if (gameList!=null && !gameList.isEmpty()) {
             return ResponseEntity.ok(gameList);
+        }else if(gameList!=null && gameList.isEmpty()) {
+            return ResponseEntity.ok("gameList empty");
         }
-        System.out.println("gamelist empty");
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    //tengo remota
     @GetMapping("/getAll")
     public ResponseEntity<Page<GameDTO>> showGames(@PageableDefault(sort = { "id" }, size = 50) Pageable pageable) {
         Page<GameDTO> gameDTOPage = gameService.getAll(pageable);
@@ -73,40 +88,20 @@ public class GameController {
         return ResponseEntity.ok(gameDTOPage);
     }
 
+    //tengo locale e remota
     @GetMapping("/updateGameReview")
-    public ResponseEntity<List<Review>> updateGameReview(@RequestBody ReviewDTO reviewDTO) {
+    public ResponseEntity<Object> updateGameReview2(@RequestBody ReviewDTO reviewDTO) {
         List<Review> reviewList = gameService.updateGameReview(reviewDTO,20);
-        if (!reviewList.isEmpty()) {
+        if (reviewList!=null && !reviewList.isEmpty()) {
             return ResponseEntity.ok(reviewList);
+        }else if(reviewList!=null && reviewList.isEmpty()) {
+            return ResponseEntity.ok("reviewList empty");
         }
-        System.out.println("gamelist empty");
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //FUNZIONE PER UPDATE DI TUTTI I GIOCHI
-    /*@PostMapping("/updateAllGameReview")
-    public ResponseEntity<Integer> updateAllGameReview(@PageableDefault(sort = { "id" }, size = 1000) Pageable pageable) {
-        int successfulUpdates=0;
-        Page<GameDTO> gameDTOPage = gameService.getAll(pageable);
-        for (GameDTO gameDTO : gameDTOPage.getContent()) {
-            String gameName = gameDTO.getName();
-            ReviewDTO reviewDTO=new ReviewDTO();
-            reviewDTO.setTitle(gameName);
-
-            List<Review> reviewList = gameService.updateGameReview(reviewDTO,20);
-            if (!reviewList.isEmpty()) {
-                successfulUpdates++;
-            }
-
-        }
-        if (successfulUpdates > 0) {
-            return ResponseEntity.ok(successfulUpdates);
-        } else {
-            System.out.println("No successful updates");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }*/
-
+    //tengo remota
     @PostMapping("/create/{userId}")
     public ResponseEntity<Object> createGame(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
         // controllo se si tratta di admin
@@ -121,6 +116,8 @@ public class GameController {
         GameDTO game = gameService.createGame(gameDTO);
         return new ResponseEntity<>(game, HttpStatus.CREATED);
     }
+
+    //tengo remota
     @DeleteMapping("/delete/{userId}")
     public ResponseEntity<Object> deleteGame(@PathVariable String userId, @RequestParam String gameId) {
         // controllo se si tratta di admin
@@ -137,6 +134,7 @@ public class GameController {
     }
 
     //DA AGGIUNGERE NEL MAIN-> CONTA IL NUMERO TOTALE DI GIOCHI E PUò FARLO SOLO L'ADMIN(AGGIUNGERE PARTI ANCHE DEL SERVICE)
+    //tengo locale
     @GetMapping("/countGame/{userId}")
     public ResponseEntity<Object> countGame(@PathVariable String userId){
         ResponseEntity<Object> responseEntity= iLoginService.roleUser(userId);
@@ -149,6 +147,23 @@ public class GameController {
 
         long count= gameService.countGameDocument();
         return ResponseEntity.ok(count);
+    }
+
+    //tengo locale
+    @GetMapping("/getGamesIngoingLinks")
+    public ResponseEntity<Integer> getGamesIngoingLinks(@RequestParam String name) {
+        Integer countLinks= gameNeo4jService.getGamesIngoingLinks(name);
+        if (countLinks!=null) {
+            return ResponseEntity.ok(countLinks);
+        }
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
+    //tengo remota
+    @GetMapping("/suggestGames/{userId}")
+    public ResponseEntity<List<GameDTO>> suggestGames(@PathVariable String userId) {
+        return gameNeo4jService.getSuggestGames(userId);
     }
 
 

@@ -70,21 +70,42 @@ public class UserNeo4jService implements IUserNeo4jService {
         }
     }
 
+    //DA FARE CON I BOOLEANI COME VALORI DI RITORNO
     @Override
-    public void addGameToWishlist(String username, String name) {
+    public Boolean addGameToWishlist(String username, String name) {
         try {
-            userNeo4jRepository.addGameToUser(username, name);
+            //check if the game exists
+            GameNeo4j gameNeo4j=gameNeo4jRepository.findGameByName(name);
+            if(gameNeo4j!=null){
+                userNeo4jRepository.addGameToUser(username, name);
+                return true;
+            }
+
+            return false;
+
         }catch (Exception e){
             System.out.println(e.getMessage());
+            return null;
         }
     }
 
     @Override
-    public void deleteGameToWishlist(String username, String name) {
+    public Boolean deleteGameToWishlist(String username, String name) {
         try {
-            userNeo4jRepository.deleteGameFromUser(username, name);
+            //check if the game is present in the list of the added game
+            List<GameNeo4j> gameNeo4jList= userNeo4jRepository.findByUsername(username);
+            for (GameNeo4j game : gameNeo4jList) {
+                if (game.getName().equals(name)) {
+                    // The game with the provided name is present in the list
+                    userNeo4jRepository.deleteGameFromUser(username, name);
+                    return true;
+                }
+            }
+
+            return false;
         }catch (Exception e){
             System.out.println(e.getMessage());
+            return null;
         }
     }
 
@@ -126,6 +147,10 @@ public class UserNeo4jService implements IUserNeo4jService {
             List<GameNeo4j> addedGames = userNeo4jRepository.findByUsername(username);
             //get the list of friends of the followed users
             List<UserNeo4j> friendsOfFriends = userNeo4jRepository.findFriendsOfFriends(username);
+            //if the userFriendList is empty return an empy list
+            if(friendsOfFriends.isEmpty()){
+                return friendsOfFriends;
+            }
 
             // Generate a list of friends of friends not in the followedUser list
             List<UserNeo4j> selectFriendsOfFriends = friendsOfFriends.stream()
@@ -133,15 +158,6 @@ public class UserNeo4jService implements IUserNeo4jService {
                     //.limit(2)
                     .collect(Collectors.toList());
 
-            //limit the number of friendOfFriends to compare the wishlist in order to reduce the time to compare the wishlists
-            /*Random random = new Random();
-            int randomPosition1 = random.nextInt(selectFriendsOfFriends.size());
-            int randomPosition2 = random.nextInt(selectFriendsOfFriends.size());
-
-           // Create a new list with elements at the random positions
-            List<UserNeo4j> resultFriendsOfFriends = new ArrayList<>();
-            resultFriendsOfFriends.add(selectFriendsOfFriends.get(randomPosition1));
-            resultFriendsOfFriends.add(selectFriendsOfFriends.get(randomPosition2));*/
 
             //limit the number of friendOfFriends to compare the wishlist in order to reduce the time to compare the wishlists
             Random random = new Random();
@@ -159,9 +175,9 @@ public class UserNeo4jService implements IUserNeo4jService {
                     .map(selectFriendsOfFriends::get)
                     .collect(Collectors.toList());
 
-            for(int i=0;i<resultFriendsOfFriends.size();i++){
+            /*for(int i=0;i<resultFriendsOfFriends.size();i++){
                 System.out.println(resultFriendsOfFriends.get(i).getUsername());
-            }
+            }*/
 
 
             //final result
@@ -193,7 +209,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             if (!suggestedFriends.isEmpty()) {
                 return suggestedFriends;
             }
-            System.out.println("suggestFriendsList empty");
+            //System.out.println("suggestFriendsList empty");
             return suggestedFriends;
         }catch (Exception e){
             System.out.println(e.getMessage());
@@ -212,10 +228,10 @@ public class UserNeo4jService implements IUserNeo4jService {
 
     //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW
     @Override
-    public boolean addLikeToReview(String username, String id) {
+    public Boolean addLikeToReview(String username, String id) {
         try {
             Boolean likePresent=userNeo4jRepository.addLikeToReview(username,id);
-            System.out.println(likePresent);
+            //System.out.println(likePresent);
             if(likePresent != null && !likePresent.booleanValue()){
                 //se il like non è presente si aggiunge anche su mongoDB
                 Optional<Review> optionalReview=reviewRepository.findById(id);
@@ -228,15 +244,20 @@ public class UserNeo4jService implements IUserNeo4jService {
                     //return true if it is created
                     return true;
                 }else{
-                    System.out.println("null");
+                    //if there are some problems we delete the link
+                    userNeo4jRepository.deleteLikeFromReview(username,id);
+                    return false;
                 }
 
+
             }
+            return false;
         }catch (Exception e){
             System.out.println(e.getMessage());
+            return null;
 
         }
-        return false;
+
 
     }
 

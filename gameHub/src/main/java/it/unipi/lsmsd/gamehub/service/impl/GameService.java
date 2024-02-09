@@ -47,8 +47,8 @@ public class GameService implements IGameService {
                 // Only score are provided
                 return gameRepository.findByAvgScoreGreaterThanEqual(gameDTO.getAvgScore());
             } else {
-                // No specific criteria, return null
-                return null;
+                // No specific criteria, return empty list
+                return Collections.emptyList();
             }
         }catch (Exception e){
             System.out.println(e.getMessage());
@@ -61,10 +61,7 @@ public class GameService implements IGameService {
     public List<GameDTOAggregation> retrieveAggregateGamesByGenresAndSortByScore() {
         try{
             List<GameDTOAggregation> gameList= gameRepository.findAggregation();
-            if(!gameList.isEmpty()){
-                return gameList;
-            }
-            return null;
+            return gameList;
         }catch (Exception e){
             System.out.println(e.getMessage());
             return null;
@@ -76,7 +73,8 @@ public class GameService implements IGameService {
     @Override
     public List<GameDTOAggregation2> findAggregation4() {
         try {
-            return gameRepository.findAggregation4();
+            List<GameDTOAggregation2> gameList= gameRepository.findAggregation4();
+            return gameList;
         }catch (Exception e){
             System.out.println(e.getMessage());
             return null;
@@ -112,7 +110,7 @@ public class GameService implements IGameService {
 
             // Find the corresponding game document
             List<Game> gameList = gameRepository.findByName(reviewDTO.getTitle());
-            System.out.println("stampo nome gioco: " + gameList.get(0).getName());
+            //System.out.println("stampo nome gioco: " + gameList.get(0).getName());
 
             if (!gameList.isEmpty()) {
                 Game game = gameList.get(0);
@@ -139,7 +137,7 @@ public class GameService implements IGameService {
                 gameRepository.save(game);
                 return existingReviews;
             } else {
-                return null;
+                return Collections.emptyList();
             }
         }catch (Exception e){
             System.out.println(e.getMessage());

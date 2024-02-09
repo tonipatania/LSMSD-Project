@@ -10,10 +10,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+//tengo da remoto
 @RequestMapping("wishlist")
 @RestController
 public class InteractionGameController {
-    @Autowired
+   /* @Autowired
     private IInteractionGameService iInteractionGameService;
 
     @PatchMapping("/addGame/{userId}")
@@ -27,5 +28,5 @@ public class InteractionGameController {
     @PatchMapping("/removeGame/{userId}")
     public ResponseEntity<Object> removeGame(@PathVariable String userId, @RequestParam int index) {
         return iInteractionGameService.removeGameWishlist(userId, index);
-    }
+    }*/
 }

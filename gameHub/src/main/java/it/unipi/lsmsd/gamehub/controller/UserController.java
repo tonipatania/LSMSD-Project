@@ -4,21 +4,16 @@ package it.unipi.lsmsd.gamehub.controller;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
-import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
 import it.unipi.lsmsd.gamehub.service.impl.UserNeo4jService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @RestController
-public class UserNeo4jController {
+public class UserController {
     @Autowired
     private UserNeo4jService userNeo4jService;
 
@@ -113,7 +108,7 @@ public class UserNeo4jController {
 
     //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW(DA MODIFICARE SIA IN SERVICE CHE REPOSITORY)
     //tengo locale
-    @PostMapping("/addLikeReview")
+    @PostMapping("/reviewSelected/addLikeReview")
     public ResponseEntity<String> addLikeToReview(@RequestParam String username,String id) {
         Boolean likeAdded=userNeo4jService.addLikeToReview(username,id);
         if (id!=null && likeAdded) {
@@ -125,6 +120,7 @@ public class UserNeo4jController {
     }
 
     //DA AGGIUNGERE NEL MAIN-> CONTA IL NUMERO TOTALE DI GIOCHI E PUò FARLO SOLO L'ADMIN(AGGIUNGERE PARTI ANCHE DEL SERVICE)
+    //tengo locale
     @GetMapping("/countUser/{userId}")
     public ResponseEntity<Object> countGame(@PathVariable String userId){
         ResponseEntity<Object> responseEntity= iLoginService.roleUser(userId);
@@ -138,6 +134,8 @@ public class UserNeo4jController {
         long count= userNeo4jService.countUserDocument();
         return ResponseEntity.ok(count);
     }
+
+    //da aggiungere da remoto funcioni follow/unfollow/update
 
 
 }
