@@ -45,87 +45,82 @@ public class UserNeo4jController {
         return ResponseEntity.ok("Giochi caricati");
     }
 
+
+    //tengo locale(da spostare in interactionGame)
     @GetMapping("/wishlist")
-    public ResponseEntity<List<GameNeo4j>> getUSerWishlist(@RequestParam String username, String friendUsername) {
+    public ResponseEntity<Object> getUserWishlist(@RequestParam String username, String friendUsername) {
         List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username,friendUsername);
-        if (!gameList.isEmpty()) {
+        if (gameList != null && !gameList.isEmpty()) {
             return ResponseEntity.ok(gameList);
+        } else if (gameList != null && gameList.isEmpty()) {
+            return ResponseEntity.ok("empty gameList");
         }
-        System.out.println("gamelist empty");
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    //tengo locale(da spostare in interactionGame)
     @PostMapping("/addWishlistGame")
     public ResponseEntity<String> addGameToWishlist(@RequestParam String username,String name) {
-        userNeo4jService.addGameToWishlist(username,name);
-        if (name!=null) {
-            return ResponseEntity.ok("gioco aggiunto");
+        Boolean result=userNeo4jService.addGameToWishlist(username,name);
+        if (result) {
+            return ResponseEntity.ok("game added");
+        }else if(!result){
+            return ResponseEntity.ok("no game added");
         }
-        System.out.println("nessun gioco aggiunto");
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    //tengo locale(da spostare in interactionGame)
     @PostMapping("/deleteWishlistGame")
     public ResponseEntity<String> deleteGameToWishlist(@RequestParam String username,String name) {
-        userNeo4jService.deleteGameToWishlist(username,name);
-        if (name!=null) {
-            return ResponseEntity.ok("gioco eliminato");
+        Boolean result=userNeo4jService.deleteGameToWishlist(username,name);
+        if (result) {
+            return ResponseEntity.ok("eliminated game");
+        }else if(!result){
+            return ResponseEntity.ok("no eliminated game");
         }
-        System.out.println("nessun gioco eliminato");
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    //tengo locale
     @GetMapping("/followedUser")
-    public ResponseEntity<List<UserNeo4j>> getFollowedUser(@RequestParam String username) {
+    public ResponseEntity<Object> getFollowedUser(@RequestParam String username) {
         List<UserNeo4j> usersList = userNeo4jService.getFollowedUser(username);
-        if (!usersList.isEmpty()) {
+        if (usersList!=null && !usersList.isEmpty()) {
             return ResponseEntity.ok(usersList);
+        }else if(usersList!=null && usersList.isEmpty()){
+            return ResponseEntity.ok("friendsList empty");
         }
-        System.out.println("gamelist empty");
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    @GetMapping("/FriendsOfFriends")
-    public ResponseEntity<List<UserNeo4j>> getFriendsOfFriends(@RequestParam String username){
-        List<UserNeo4j> userNeo4jList=userNeo4jService.getFriendsOfFriends(username);
-        if (!userNeo4jList.isEmpty()) {
-            return ResponseEntity.ok(userNeo4jList);
-        }
-        System.out.println("no friends of friends");
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
-
-    //Query per amici suggeriti
+    //tengo locale
     @GetMapping("/SuggestFriends")
-    public ResponseEntity<List<UserNeo4j>> getSuggestFriends(@RequestParam String username){
+    public ResponseEntity<Object> getSuggestFriends(@RequestParam String username){
         List<UserNeo4j> userNeo4jList=userNeo4jService.getSuggestedFriends(username);
-        if (!userNeo4jList.isEmpty()) {
+        if (userNeo4jList!=null && !userNeo4jList.isEmpty()) {
             return ResponseEntity.ok(userNeo4jList);
+        }else if (userNeo4jList!=null && userNeo4jList.isEmpty()){
+            return ResponseEntity.ok("suggestFriendsList empty");
         }
-        System.out.println("no suggested friends empty");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
-
-
-   /* @PostMapping("/addLikeReview")
-    public ResponseEntity<String> addLikeToReview(@RequestParam String username,String id) {
-        userNeo4jService.addGameToWishlist(username,id);
-        if (id!=null) {
-            return ResponseEntity.ok("like aggiunto");
-        }
-        System.out.println("nessun like aggiunto");
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }*/
 
 
     //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW(DA MODIFICARE SIA IN SERVICE CHE REPOSITORY)
+    //tengo locale
     @PostMapping("/addLikeReview")
     public ResponseEntity<String> addLikeToReview(@RequestParam String username,String id) {
-        boolean likeAdded=userNeo4jService.addLikeToReview(username,id);
+        Boolean likeAdded=userNeo4jService.addLikeToReview(username,id);
         if (id!=null && likeAdded) {
-            return ResponseEntity.ok("like aggiunto");
+            return ResponseEntity.ok("added like");
+        } else if (id!=null && !likeAdded) {
+            return ResponseEntity.ok("no added like");
         }
-        System.out.println("nessun like aggiunto");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
