@@ -24,7 +24,7 @@ public interface IGameService {
 
 
 
-    public Page<GameDTO> getAll(Pageable pageable);
+    public Page<Game> getAll(Pageable pageable);
     public ResponseEntity<String> createGame(GameDTO gameDTO);
     public ResponseEntity<String> deleteGame(String id);
 }

@@ -5,10 +5,11 @@ import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
 import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation2;
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
+import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.Review;
+import it.unipi.lsmsd.gamehub.service.IGameNeo4jService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
-import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,9 +31,9 @@ public class GameController {
     private ILoginService iLoginService;
 
     @Autowired
-    GameNeo4jService gameNeo4jService;
-    @GetMapping("/searchFilter")
-    public ResponseEntity<List<Game>> retrieveGamesByParameters(@RequestBody GameDTO gameDTO) {
+    IGameNeo4jService gameNeo4jService;
+    @GetMapping("/searchFilter/{userId}")
+    public ResponseEntity<List<Game>> retrieveGamesByParameters(@PathVariable String userId, @RequestBody GameDTO gameDTO) {
         List<Game> gameList = gameService.retrieveGamesByParameters(gameDTO);
         if (!gameList.isEmpty()) {
             return ResponseEntity.ok(gameList);
@@ -63,9 +64,9 @@ public class GameController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    @GetMapping("/getAll")
-    public ResponseEntity<Page<GameDTO>> showGames(@PageableDefault(sort = { "id" }, size = 50) Pageable pageable) {
-        Page<GameDTO> gameDTOPage = gameService.getAll(pageable);
+    @GetMapping("/getAll/{userId}")
+    public ResponseEntity<Page<Game>> showGames(@PathVariable String userId, @PageableDefault(sort = { "id" }, size = 50) Pageable pageable) {
+        Page<Game> gameDTOPage = gameService.getAll(pageable);
         if (pageable.getPageNumber() >= gameDTOPage.getTotalPages()) {
             // La pagina richiesta supera il numero massimo di pagine disponibili
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
@@ -77,8 +78,14 @@ public class GameController {
         return ResponseEntity.ok(gameDTOPage);
     }
 
-    @PatchMapping("/updateGameReview")
-    public ResponseEntity<List<Review>> updateGameReview(@RequestBody ReviewDTO reviewDTO) {
+    // funzione admin
+    @PatchMapping("gameSelected/updateGameReview/{userId}")
+    public ResponseEntity<List<Review>> updateGameReview(@PathVariable String userId, @RequestBody ReviewDTO reviewDTO) {
+        // controllo se si tratta di admin
+        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
+        if(responseEntity.getStatusCode() != HttpStatus.OK) {
+            return ResponseEntity.status(responseEntity.getStatusCode()).build();
+        }
         List<Review> reviewList = gameService.updateGameReview(reviewDTO,20);
         if (!reviewList.isEmpty()) {
             return ResponseEntity.ok(reviewList);
@@ -87,6 +94,7 @@ public class GameController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    // funzione admin
     @PostMapping("/create/{userId}")
     public ResponseEntity<String> createGame(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
         // controllo se si tratta di admin
@@ -105,7 +113,8 @@ public class GameController {
         // eliminare gioco in mongo
         return gameService.deleteGame(responseEntity.getBody());
     }
-    @DeleteMapping("/delete/{userId}")
+    //funzione admin
+    @DeleteMapping("gameSelected/delete/{userId}")
     public ResponseEntity<String> deleteGame(@PathVariable String userId, @RequestParam String gameId) {
         // controllo se si tratta di admin
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
@@ -130,10 +139,9 @@ public class GameController {
         System.out.println("gamelist empty");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
-    @GetMapping("/suggestGames/{userId}")
-    public ResponseEntity<List<GameDTO>> suggestGames(@PathVariable String userId) {
-        //return gameNeo4jService.getSuggestGames(userId);
-        return null;
+    @GetMapping("/suggestGames/{username}")
+    public ResponseEntity<List<GameNeo4j>> suggestGames(@PathVariable String username) {
+        return gameNeo4jService.getSuggestGames(username);
     }
 
 }

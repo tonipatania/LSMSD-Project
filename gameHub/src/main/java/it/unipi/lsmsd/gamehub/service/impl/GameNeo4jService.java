@@ -1,20 +1,24 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
 
+import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.repository.GameNeo4jRepository;
-import it.unipi.lsmsd.gamehub.repository.LoginRepository;
+import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
 import it.unipi.lsmsd.gamehub.service.IGameNeo4jService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Random;
+
 @Service
 public class GameNeo4jService implements IGameNeo4jService {
     @Autowired
     private GameNeo4jRepository gameNeo4jRepository;
     @Autowired
-    private LoginRepository loginRepository;
+    private UserNeo4jRepository userNeo4jRepository;
 
     @Override
     public Integer getGamesIngoingLinks(String name) {
@@ -25,25 +29,26 @@ public class GameNeo4jService implements IGameNeo4jService {
             return null;
         }
     }
-//    @Override
-//    public ResponseEntity<List<GameDTO>> getSuggestGames(String userId) {
-//        try {
-//            // recupero l ultimo gioco aggiunto in wishlist
-//            Optional<User> user = loginRepository.findById(userId);
-//            List<GameWishlist> gameWishlists = user.get().getGames();
-//            GameWishlist lastGameWishlist = gameWishlists.get(gameWishlists.size() - 1);
-//
-//            List<GameNeo4j> games = gameNeo4jRepository.findSuggestGames(lastGameWishlist.getId(), userId);
+    @Override
+    public ResponseEntity<List<GameNeo4j>> getSuggestGames(String username) {
+        try {
+            // recupero i giochi della wishlist
+            List<GameNeo4j> gameWishlist = userNeo4jRepository.findByUsername(username);
+            // scelgo un gioco casuale
+            Random random = new Random();
+            int randomIndex = random.nextInt(gameWishlist.size());
+
+            List<GameNeo4j> games = gameNeo4jRepository.findSuggestGames(gameWishlist.get(randomIndex).getId(), username);
 //            ModelMapper modelMapper = new ModelMapper();
 //            List<GameDTO> gameDTOS = games.stream()
 //                    .map(game -> modelMapper.map(game, GameDTO.class))
 //                    .collect(Collectors.toList());
-//            return new ResponseEntity<>(gameDTOS, HttpStatus.OK);
-//        } catch (Exception e) {
-//            System.out.println("Errore durante l accesso al database: " + e.getMessage());
-//            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-//        }
-//    }
+            return new ResponseEntity<>(games, HttpStatus.OK);
+        } catch (Exception e) {
+            System.out.println("Errore durante l accesso al database: " + e.getMessage());
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
     public ResponseEntity<String> removeGame(String gameId) {
         try {
             gameNeo4jRepository.removeGame(gameId);

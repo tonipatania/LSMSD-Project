@@ -16,8 +16,8 @@ public class InteractionGameController {
     @Autowired
     private IInteractionGameService iInteractionGameService;
 
-    @GetMapping("/view")
-    public ResponseEntity<List<GameNeo4j>> getUSerWishlist(@RequestParam String username) {
+    @GetMapping("userSelected/view/{userId}")
+    public ResponseEntity<List<GameNeo4j>> getUSerWishlist(@PathVariable String userId, @RequestParam String username) {
         List<GameNeo4j> gameList = iInteractionGameService.getUserWishlist(username);
         if (!gameList.isEmpty()) {
             return ResponseEntity.ok(gameList);
@@ -26,13 +26,13 @@ public class InteractionGameController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    @PostMapping("/addGame")
-    public ResponseEntity<String> addGameToWishlist(@RequestParam String username, String name) {
+    @PostMapping("/gameSelected/addGame/{userId}")
+    public ResponseEntity<String> addGameToWishlist(@PathVariable String userId, @RequestParam String username, @RequestParam String name) {
         return iInteractionGameService.addGameToWishlist(username, name);
     }
 
-    @PostMapping("/deleteGame")
-    public ResponseEntity<String> deleteGameToWishlist(@RequestParam String username, String name) {
+    @DeleteMapping("/gameSelected/deleteGame/{userId}")
+    public ResponseEntity<String> deleteGameToWishlist(@PathVariable String userId, @RequestParam String username, @RequestParam String name) {
         return iInteractionGameService.deleteGameToWishlist(username, name);
     }
 }

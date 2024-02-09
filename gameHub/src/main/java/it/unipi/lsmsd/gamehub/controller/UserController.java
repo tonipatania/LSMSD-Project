@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@RequestMapping("action")
+@RequestMapping("user")
 @RestController
 public class UserController {
     @Autowired
@@ -57,7 +57,7 @@ public class UserController {
 //    }
 
     //Query per amici suggeriti
-    @GetMapping("/SuggestFriends")
+    @GetMapping("/suggestFriends")
     public ResponseEntity<List<UserNeo4j>> getSuggestFriends(@RequestParam String username) {
         List<UserNeo4j> userNeo4jList = userNeo4jService.getSuggestedFriends(username);
         if (!userNeo4jList.isEmpty()) {
@@ -68,7 +68,7 @@ public class UserController {
     }
 
     //DA CAPIRE SE MODIFICARE ANCHE IL CAMPO likeCount in mongo
-    @PostMapping("/addLikeReview")
+    @PostMapping("/reviewSelected/addLikeReview")
     public ResponseEntity<String> addLikeToReview(@RequestParam String username, String idGame) {
         userNeo4jService.addLikeToReview(username, idGame);
         if (idGame != null) {

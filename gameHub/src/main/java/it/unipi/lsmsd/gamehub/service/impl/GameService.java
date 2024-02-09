@@ -84,11 +84,12 @@ public class GameService implements IGameService {
     }
 
     @Override
-    public Page<GameDTO> getAll(Pageable pageable) {
+    public Page<Game> getAll(Pageable pageable) {
         try {
             Page<Game> games =  gameRepository.findAll(pageable);
-            ModelMapper modelMapper = new ModelMapper();
-            return games.map(game -> modelMapper.map(game, GameDTO.class));
+//            ModelMapper modelMapper = new ModelMapper();
+//            return games.map(game -> modelMapper.map(game, GameDTO.class));
+            return games;
         }
         catch (Exception e) {
             System.out.println("Errore durante il recupero dei giochi: " + e.getMessage());

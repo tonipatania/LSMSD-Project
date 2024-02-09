@@ -36,7 +36,7 @@ public class ReviewController {
     }
 
     //count the top 20 like review given a game title
-    @GetMapping("/topCountReview")
+    @GetMapping("/gameSelected/topCountReview")
     public ResponseEntity<List<Review>> retrieveByTitleOrderByLikeCountDesc(@RequestBody ReviewDTO reviewDTO) {
         List<Review> reviewList = review2Service.retrieveByTitleOrderByLikeCountDesc(reviewDTO,20);
         if (!reviewList.isEmpty()) {
@@ -68,13 +68,13 @@ public class ReviewController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    @PostMapping("/create/{userId}")
+    @PostMapping("/gameSelected/create/{userId}")
     public ResponseEntity<String> createGame(@PathVariable String userId,@RequestBody ReviewDTO reviewDTO) {
         // controllo se si tratta di admin
-        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
-        if(responseEntity.getStatusCode() != HttpStatus.OK) {
-            return responseEntity;
-        }
+//        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
+//        if(responseEntity.getStatusCode() != HttpStatus.OK) {
+//            return responseEntity;
+//        }
         // creo review in mongo
         ReviewDTO review = review2Service.createReview(reviewDTO);
         if(review == null) {
@@ -89,7 +89,7 @@ public class ReviewController {
         return review2Service.deleteReview(reviewDTO.getId());
     }
 
-    @DeleteMapping("/delete/{userId}")
+    @DeleteMapping("/reviewSelected/delete/{userId}")
     public ResponseEntity<String> deleteGame(@PathVariable String userId, @RequestParam String reviewId) {
         // controllo se si tratta di admin
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);

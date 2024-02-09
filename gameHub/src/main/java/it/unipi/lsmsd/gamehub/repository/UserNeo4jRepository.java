@@ -11,7 +11,7 @@ import java.util.List;
 @Repository
 public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> {
   // @Query("MATCH (u:UserNeo4j)-[:ADD]->(g:GameNeo4j) WHERE u.username = $username RETURN g")
-   @Query("MATCH (u:UserNeo4j)-[:ADD]->(g:GameNeo4j) WHERE u.username = $username RETURN g.id as id, g.name as name, g.developers as developers, g.categories as categories, g.genres as genres")
+   @Query("MATCH (u:UserNeo4j)-[:WISHLIST]->(g:GameNeo4j) WHERE u.username = $username RETURN g.id as id, g.name as name")
    List<GameNeo4j> findByUsername(@Param("username") String username);
 
     @Query("MATCH (u:UserNeo4j {username: $username}), (g:GameNeo4j {name: $name}) MERGE (u)-[:ADD]->(g)")

@@ -9,8 +9,7 @@ import java.util.List;
 
 public interface IGameNeo4jService {
     Integer getGamesIngoingLinks(String name);
-    //ResponseEntity<List<GameDTO>> getSuggestGames(String userId);
-
+    ResponseEntity<List<GameNeo4j>> getSuggestGames(String username);
 
     public ResponseEntity<String> removeGame(String gameId);
     public ResponseEntity<String> addGame(String id, String name);
