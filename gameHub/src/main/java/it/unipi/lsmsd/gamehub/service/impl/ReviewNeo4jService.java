@@ -10,6 +10,9 @@ import it.unipi.lsmsd.gamehub.service.IReviewNeo4jService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -36,6 +39,26 @@ public class ReviewNeo4jService implements IReviewNeo4jService {
         }catch (Exception e){
             System.out.println(e.getMessage());
             return null;
+        }
+    }
+    public ResponseEntity<String> createReview(String idReview) {
+        try {
+            ReviewNeo4j reviewNeo4j = new ReviewNeo4j(idReview);
+            ReviewNeo4j savedReview = reviewNeo4jRepository.save(reviewNeo4j);
+            return new ResponseEntity<>("corrected created review", HttpStatus.CREATED);
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>("error saving in neo4j: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    public ResponseEntity<String> removeReview(String idReview) {
+        try {
+            ReviewNeo4j reviewNeo4j = new ReviewNeo4j(idReview);
+            reviewNeo4jRepository.delete(reviewNeo4j);
+            return new ResponseEntity<>("remove correct", HttpStatus.OK);
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>("error in deleting review: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

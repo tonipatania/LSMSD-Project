@@ -16,13 +16,8 @@ import java.util.List;
 
 @NodeEntity("GameNeo4j")
 public class GameNeo4j {
-    @Id @GeneratedValue
+    @Id
     private String id;
     private String name;
-    /*private String developers;
-    private String categories;
-    private String genres;*/
-    //private String numberOfLinks;
-    /*@Relationship(type = "ADD", direction = Relationship.Direction.INCOMING)
-    private List<UserNeo4j> users;*/
+
 }

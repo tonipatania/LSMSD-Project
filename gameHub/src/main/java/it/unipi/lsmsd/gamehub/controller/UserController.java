@@ -1,10 +1,11 @@
 package it.unipi.lsmsd.gamehub.controller;
 
 
+
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
-import it.unipi.lsmsd.gamehub.service.impl.UserNeo4jService;
+import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,15 +13,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+
+@RequestMapping("user")
 @RestController
 public class UserController {
     @Autowired
-    private UserNeo4jService userNeo4jService;
-
-
+    private IUserNeo4jService userNeo4jService;
     @Autowired
     private ILoginService iLoginService;
-
 
     // to load user from mongo to neo4j
 
@@ -31,14 +31,13 @@ public class UserController {
     }
 
 
-    //DA MODIFICARE NEL MAIN->TROVA LA LISTA DI GIOCHI DEGLI AMICI(DA MODIFICARE ANCHE SERVICE E REPOSITORY)
-
     // to load games from mongo to neo4j
     @PostMapping("/loadgames")
     public ResponseEntity<String> reqGames() {
         userNeo4jService.loadGames();
         return ResponseEntity.ok("Giochi caricati");
     }
+
 
 
     //tengo locale(da spostare in interactionGame)
@@ -106,8 +105,7 @@ public class UserController {
     }
 
 
-    //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW(DA MODIFICARE SIA IN SERVICE CHE REPOSITORY)
-    //tengo locale
+
     @PostMapping("/reviewSelected/addLikeReview")
     public ResponseEntity<String> addLikeToReview(@RequestParam String username,String id) {
         Boolean likeAdded=userNeo4jService.addLikeToReview(username,id);
@@ -119,23 +117,46 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //DA AGGIUNGERE NEL MAIN-> CONTA IL NUMERO TOTALE DI GIOCHI E PUò FARLO SOLO L'ADMIN(AGGIUNGERE PARTI ANCHE DEL SERVICE)
-    //tengo locale
+
     @GetMapping("/countUser/{userId}")
     public ResponseEntity<Object> countGame(@PathVariable String userId){
-        ResponseEntity<Object> responseEntity= iLoginService.roleUser(userId);
-        if(responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-            return responseEntity;
-        }
-        else if (responseEntity.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-            return responseEntity;
+        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
+        if(responseEntity.getStatusCode() != HttpStatus.OK) {
+            return ResponseEntity.status(responseEntity.getStatusCode()).body(responseEntity.getBody());
         }
 
         long count= userNeo4jService.countUserDocument();
         return ResponseEntity.ok(count);
     }
 
-    //da aggiungere da remoto funcioni follow/unfollow/update
 
+    @PostMapping("/follow")
+    public ResponseEntity<String> followUser(@RequestParam String followerUsername, @RequestParam String followedUsername) {
+        userNeo4jService.followUser(followerUsername, followedUsername);
+        return ResponseEntity.ok("Followed successfully");
+    }
 
+    @PostMapping("/unfollow")
+    public ResponseEntity<String> unfollowUser(@RequestParam String followerUsername, @RequestParam String followedUsername) {
+        userNeo4jService.unfollowUser(followerUsername, followedUsername);
+        return ResponseEntity.ok("Unfollowed successfully");
+    }
+    //update username on the basis of old username
+    @PatchMapping("/updateUser")
+    public ResponseEntity<String> updateUser(@RequestParam String username, @RequestParam String newUsername) {
+        // aggiorno utente su mongo
+        ResponseEntity<String> responseEntity = iLoginService.updateUser(username, newUsername);
+        if(responseEntity.getStatusCode() != HttpStatus.OK) {
+            return responseEntity;
+        }
+        // aggiorno su neo4j
+       ResponseEntity<String> response = userNeo4jService.updateUser(username, newUsername);
+       if(response.getStatusCode() == HttpStatus.OK) {
+           return response;
+       }
+       // se fallisce riporto l username allo stato iniziale
+       responseEntity = iLoginService.updateUser(newUsername, username);
+       return ResponseEntity.status(responseEntity.getStatusCode()).body("username update failed, please try again later");
+    }
 }
+

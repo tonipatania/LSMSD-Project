@@ -2,21 +2,24 @@ package it.unipi.lsmsd.gamehub.controller;
 
 import it.unipi.lsmsd.gamehub.DTO.LoginDTO;
 import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
+import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
+import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
+import it.unipi.lsmsd.gamehub.service.impl.UserNeo4jService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 public class LoginController {
     @Autowired
     private ILoginService loginService;
 
-    //tengo locale
+    @Autowired
+    private IUserNeo4jService userNeo4jService;
+
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginDTO loginDTO) {
         AuthResponse authResponse = loginService.authenticate(loginDTO);
@@ -28,13 +31,42 @@ public class LoginController {
         }
     }
 
-    //tengo remota
+
     @PostMapping("/signup")
     public ResponseEntity<String> registration(@RequestBody RegistrationDTO registrationDTO){
-        if(loginService.registrate(registrationDTO)){
-            return ResponseEntity.ok("Signin Successfull");
+        // registro su mongo
+        ResponseEntity<String> responseEntity = loginService.registrate(registrationDTO);
+        if(responseEntity.getStatusCode() != HttpStatus.CREATED){
+            return responseEntity;
         }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        // aggiungo in neo4j
+        ResponseEntity<String> response = userNeo4jService.addUser(responseEntity.getBody(), registrationDTO.getUsername());
+        if(response.getStatusCode() == HttpStatus.CREATED)
+            return response;
+        // neo4j ha fallito la creazione -> rimuovere utente in mongo
+        return loginService.removeUser(responseEntity.getBody());
     }
+    // logout
+
+
+    //remove user
+//    @DeleteMapping("/removeUser")
+//    public ResponseEntity<String> removeUser(@RequestParam String username) {
+//        userNeo4jService.removeUser(username);
+//        return ResponseEntity.ok("User Removed");
+//    }
+
+    //get id and username
+//    @GetMapping("/getUser")
+//    public ResponseEntity<UserNeo4j> getUser(@RequestParam String username) {
+//        UserNeo4j user = userNeo4jService.getUser(username);
+//
+//        if (user != null) {
+//            return ResponseEntity.ok(user);
+//        } else {
+//            return ResponseEntity.notFound().build();
+//        }
+//    }
+//
 
 }

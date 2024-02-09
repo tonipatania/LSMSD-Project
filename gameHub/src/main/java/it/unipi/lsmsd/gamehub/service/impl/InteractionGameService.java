@@ -1,9 +1,10 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
-import com.mongodb.MongoException;
-import it.unipi.lsmsd.gamehub.DTO.GameWishlistDTO;
+import it.unipi.lsmsd.gamehub.DTO.GameDTO;
+import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.User;
 import it.unipi.lsmsd.gamehub.repository.LoginRepository;
+import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
 import it.unipi.lsmsd.gamehub.service.IInteractionGameService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,64 +18,38 @@ import java.util.Optional;
 //rengo da remoto
 @Service
 public class InteractionGameService implements IInteractionGameService {
-   /* @Autowired
-    private LoginRepository loginRepository;
+
+    @Autowired
+    private UserNeo4jRepository userNeo4jRepository;
+
+
     @Override
-    public ResponseEntity<Object> addGame(String userId, String idGame, String nameGame) {
+    public List<GameNeo4j> getUserWishlist(String username) {
         try {
-            Optional<User> u = loginRepository.findById(userId);
-            User user = u.get();
-            GameWishlistDTO gameWishlist = new GameWishlistDTO(idGame,nameGame);
-
-            if(user.getGames() != null) {
-                user.getGames().add(gameWishlist);
-            }
-            // wishlist vuota
-            else {
-                // creo il campo games
-                List<GameWishlistDTO> newGamesList = new ArrayList<>();
-                newGamesList.add(gameWishlist);
-                user.setGames(newGamesList);
-            }
-            loginRepository.save(user);
-            return ResponseEntity.ok(null);
+            return userNeo4jRepository.findByUsername(username);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return null;
         }
-        catch (Exception e) {
-            System.out.println("Errore durante l'operazione: " + e.getMessage());
-            return new ResponseEntity<>("Errore di comunicazione con il database", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
     }
+
     @Override
-    public ResponseEntity<List<GameWishlistDTO>> getWishlist(String idUser) {
+    public ResponseEntity<String> addGameToWishlist(String username, String name) {
         try {
-            Optional<User> user =  loginRepository.findById(idUser);
-
-            if(user.get().getGames() == null) {
-                return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
-            } else if (user.get().getGames().isEmpty()) {
-                return new ResponseEntity<>(null, HttpStatus.NO_CONTENT);
-            }
-            return new ResponseEntity<>(user.get().getGames(), HttpStatus.OK);
+            userNeo4jRepository.addGameToUser(username, name);
+            return new ResponseEntity<>("game correctly added", HttpStatus.OK);
+        }catch (Exception e){
+            return new ResponseEntity<>("error in wishlist adding: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        catch (MongoException e) {
-            System.out.println("Errore durante il recupero dell'utente da MongoDB: " + e.getMessage());
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
     }
+
     @Override
-    public ResponseEntity<Object> removeGameWishlist(String userId, int index) {
+    public ResponseEntity<String> deleteGameToWishlist(String username, String name) {
         try {
-            Optional<User> user = loginRepository.findById(userId);
-            List<GameWishlistDTO> gameWishlistDTOS = user.get().getGames();
-            GameWishlistDTO gameWishlistDTO = gameWishlistDTOS.remove(index);
-            loginRepository.save(user.get());
-            return ResponseEntity.ok(null);
+            userNeo4jRepository.deleteGameFromUser(username, name);
+            return new ResponseEntity<>("game correctly deleted", HttpStatus.OK);
+        }catch (Exception e){
+            return new ResponseEntity<>("error in deleting game: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        catch (MongoException e) {
-            System.out.println("Errore durante la modifica su MongoDB: " + e.getMessage());
-            return new ResponseEntity<>("Errore di interazione col database", HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }*/
+    }
 }

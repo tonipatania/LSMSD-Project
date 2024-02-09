@@ -8,6 +8,7 @@ import it.unipi.lsmsd.gamehub.repository.LoginRepository;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -39,7 +40,7 @@ public class LoginService implements ILoginService {
             return new AuthResponse(false, "Error occurred while authenticating", null);
         }
     }
-    public ResponseEntity<Object> roleUser(String userId) {
+    public ResponseEntity<String> roleUser(String userId) {
         try {
             Optional<User> user = loginRepository.findById(userId);
             String role = user.get().getRole();
@@ -54,7 +55,7 @@ public class LoginService implements ILoginService {
         }
     }
 
-    public boolean registrate(RegistrationDTO registrationDTO){
+    public ResponseEntity<String> registrate(RegistrationDTO registrationDTO){
         try {
             //registrate value
             String name = registrationDTO.getName();
@@ -67,7 +68,7 @@ public class LoginService implements ILoginService {
 
             // If the user with the same username exists, return false
             if (existingUser != null) {
-                return false;
+                return new ResponseEntity<>("username already present, try again with another", HttpStatus.UNAUTHORIZED);
             }
 
             // If the user with the same username doesn't exist, you can proceed with registration logic
@@ -84,11 +85,35 @@ public class LoginService implements ILoginService {
             loginRepository.save(newUser);
 
             // Return true to indicate successful registration
-            return true;
+            return new ResponseEntity<>(newUser.getId(), HttpStatus.CREATED);
         }catch (Exception e){
-            System.out.println(e.getMessage());
-           return false;
+            return new ResponseEntity<>("Error in interaction with Mongo" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
+    }
+    public ResponseEntity<String> removeUser(String userId) {
+        try {
+            loginRepository.deleteById(userId);
+            return new ResponseEntity<>("try the registration again later", HttpStatus.OK);
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>("error with Mongo" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    public ResponseEntity<String> updateUser(String username, String newUsername) {
+        try {
+            // controllo se e gia presente il nuovo username
+            User existingUser = loginRepository.findByUsername(newUsername);
+            if (existingUser != null) {
+                // username gia presente
+                return new ResponseEntity<>("username already used, try again with another username", HttpStatus.CONFLICT);
+            }
+            // aggiorno username
+            User u = loginRepository.findByUsername(username);
+            u.setUsername(newUsername);
+            u = loginRepository.save(u);
+            return new ResponseEntity<>("username updated in mongo", HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>("error in updating username in mongo: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

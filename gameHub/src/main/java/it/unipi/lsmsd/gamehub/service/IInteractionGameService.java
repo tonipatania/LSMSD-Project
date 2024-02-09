@@ -1,14 +1,16 @@
 package it.unipi.lsmsd.gamehub.service;
 
-import it.unipi.lsmsd.gamehub.DTO.GameWishlistDTO;
+import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
-import java.util.Objects;
 
 public interface IInteractionGameService {
-    //tengo da remoto
-    /*public ResponseEntity<Object> addGame(String userId, String idGame, String nameGame);
-    public ResponseEntity<List<GameWishlistDTO>> getWishlist(String userId);
-    public ResponseEntity<Object> removeGameWishlist(String userId, int index);*/
+
+    public List<GameNeo4j> getUserWishlist(String username);
+
+    public ResponseEntity<String> addGameToWishlist(String username,String name);
+
+    public ResponseEntity<String> deleteGameToWishlist(String username,String name);
+
 }

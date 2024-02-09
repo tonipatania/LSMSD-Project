@@ -9,6 +9,8 @@ import it.unipi.lsmsd.gamehub.model.Review;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.http.ResponseEntity;
+
 import java.util.List;
 
 public interface IGameService {
@@ -22,10 +24,15 @@ public interface IGameService {
 
 
 
-    public Page<GameDTO> getAll(Pageable pageable);
+    /*public Page<GameDTO> getAll(Pageable pageable);
     public GameDTO createGame(GameDTO gameDTO);
-    public void deleteGame(String id);
+    public void deleteGame(String id);*/
 
     //AGGIUNGERE NEL MAIN-> FUNZIONE CHE CONTA IL NUMERO TOTALE DI GIOCHI
     public long countGameDocument();
+
+    public Page<Game> getAll(Pageable pageable);
+    public ResponseEntity<String> createGame(GameDTO gameDTO);
+    public ResponseEntity<String> deleteGame(String id);
+
 }

@@ -1,13 +1,16 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
+
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.model.*;
+
 
 import it.unipi.lsmsd.gamehub.repository.*;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -108,6 +111,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             return null;
         }
     }
+
 
     @Override
     public List<UserNeo4j> getFollowedUser(String username) {
@@ -217,14 +221,7 @@ public class UserNeo4jService implements IUserNeo4jService {
         }
     }
 
-    /*@Override
-    public void addLikeToReview(String username, String id) {
-        try {
-            userNeo4jRepository.addLikeToReview(username,id);
-        }catch (Exception e){
-            System.out.println(e.getMessage());
-        }
-    }*/
+
 
     //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW
     @Override
@@ -269,6 +266,41 @@ public class UserNeo4jService implements IUserNeo4jService {
         }catch (Exception e){
             System.out.println(e.getMessage());
             return -1;
+        }
+    }
+
+    @Override
+    public void followUser(String followerUsername, String followedUsername) {
+        userNeo4jRepository.followUser(followerUsername, followedUsername);
+    }
+    @Override
+    public void unfollowUser(String followerUsername, String followedUsername) {
+        userNeo4jRepository.unfollowUser(followerUsername, followedUsername);
+    }
+
+    public void removeUser(String username) {
+        userNeo4jRepository.removeUser(username);
+    }
+    public ResponseEntity<String> addUser(String id, String username){
+        try {
+            userNeo4jRepository.addUser(id, username);
+            return new ResponseEntity<>("successfully registered user", HttpStatus.CREATED);
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>("Error in interaction with Neo4j" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+    }
+    public UserNeo4j getUser(String username){
+        return userNeo4jRepository.getUser(username);
+    }
+    public ResponseEntity<String> updateUser(String username, String newUsername){
+        try {
+            userNeo4jRepository.updateUser(username, newUsername);
+            return new ResponseEntity<>("username correctly updated", HttpStatus.OK);
+        }
+        catch (Exception e) {
+            return new ResponseEntity<>("error in updating username in neo4j: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 

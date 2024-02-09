@@ -19,6 +19,4 @@ public class UserNeo4j {
     @Id
     private String id;
     private String username;
-    /*@Relationship(type = "ADD", direction = Relationship.Direction.OUTGOING)
-    private List<GameNeo4j> games;*/
 }

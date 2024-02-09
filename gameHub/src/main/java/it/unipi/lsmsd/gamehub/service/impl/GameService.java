@@ -16,6 +16,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -35,7 +37,7 @@ public class GameService implements IGameService {
     @Override
     public List<Game> retrieveGamesByParameters(GameDTO gameDTO) {
         try {
-            if(gameDTO.getName()!=null){
+            if (gameDTO.getName() != null) {
                 return gameRepository.findByName(gameDTO.getName());
             } else if (gameDTO.getGenres() != null && gameDTO.getAvgScore() != 0) {
                 // Both score and genres are provided
@@ -50,7 +52,7 @@ public class GameService implements IGameService {
                 // No specific criteria, return empty list
                 return Collections.emptyList();
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println(e.getMessage());
             return null;
         }
@@ -59,36 +61,34 @@ public class GameService implements IGameService {
 
     @Override
     public List<GameDTOAggregation> retrieveAggregateGamesByGenresAndSortByScore() {
-        try{
-            List<GameDTOAggregation> gameList= gameRepository.findAggregation();
+        try {
+            List<GameDTOAggregation> gameList = gameRepository.findAggregation();
             return gameList;
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println(e.getMessage());
             return null;
         }
-
-
     }
 
     @Override
     public List<GameDTOAggregation2> findAggregation4() {
         try {
-            List<GameDTOAggregation2> gameList= gameRepository.findAggregation4();
+            List<GameDTOAggregation2> gameList = gameRepository.findAggregation4();
             return gameList;
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println(e.getMessage());
             return null;
         }
     }
 
     @Override
-    public Page<GameDTO> getAll(Pageable pageable) {
+    public Page<Game> getAll(Pageable pageable) {
         try {
-            Page<Game> games =  gameRepository.findAll(pageable);
-            ModelMapper modelMapper = new ModelMapper();
-            return games.map(game -> modelMapper.map(game, GameDTO.class));
-        }
-        catch (Exception e) {
+            Page<Game> games = gameRepository.findAll(pageable);
+//            ModelMapper modelMapper = new ModelMapper();
+//            return games.map(game -> modelMapper.map(game, GameDTO.class));
+            return games;
+        } catch (Exception e) {
             System.out.println("Errore durante il recupero dei giochi: " + e.getMessage());
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
@@ -139,14 +139,14 @@ public class GameService implements IGameService {
             } else {
                 return Collections.emptyList();
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println(e.getMessage());
             return null;
         }
     }
 
     @Override
-    public GameDTO createGame(GameDTO gameDTO) {
+    public ResponseEntity<String> createGame(GameDTO gameDTO) {
         // converto il dto in model entity
         ModelMapper modelMapper = new ModelMapper();
         Game game = modelMapper.map(gameDTO, Game.class);
@@ -155,14 +155,14 @@ public class GameService implements IGameService {
             Game saved = gameRepository.save(game);
             // mappare model in dto
             GameDTO gameInserted = modelMapper.map(saved, GameDTO.class);
-            return gameInserted;
-        }
-        catch (Exception e) {
-            System.out.println("Errore nella creazione del gioco: " + e.getMessage());
-            return null;
+            return new ResponseEntity<>(gameInserted.getId(), HttpStatus.CREATED);
+        } catch (Exception e) {
+            System.out.println("Error in game creation: " + e.getMessage());
+            return new ResponseEntity<>("Error in game creation: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    @Override
+    /*@Override
+
     public void deleteGame(String id) {
         // aggiungere logica di errore
         try {
@@ -170,20 +170,29 @@ public class GameService implements IGameService {
         }catch (Exception e){
             System.out.println(e.getMessage());
         }
-    }
+    }*/
 
     //AGGIUNGERE NEL MAIN-> FUNZIONE CHE CONTA IL NUMERO TOTALE DI GIOCHI(UTILIZZO IL METODO COUNT DI MONGO REPOSITORY)
     @Override
-    public long countGameDocument(){
+    public long countGameDocument() {
         try {
             return gameRepository.count();
-        }catch (Exception e){
+        } catch (Exception e) {
             System.out.println(e.getMessage());
             return -1;
         }
     }
 
 
+    @Override
+    public ResponseEntity<String> deleteGame(String id) {
+        try {
+            gameRepository.deleteById(id);
+            return new ResponseEntity<>("game deleted", HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>("deletion error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 
-
+        }
+    }
 }
+
