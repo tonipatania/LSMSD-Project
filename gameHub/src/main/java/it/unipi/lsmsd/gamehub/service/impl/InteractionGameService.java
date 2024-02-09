@@ -19,7 +19,7 @@ import java.util.Optional;
 @Service
 public class InteractionGameService implements IInteractionGameService {
 
-    @Autowired
+   /* @Autowired
     private UserNeo4jRepository userNeo4jRepository;
 
 
@@ -51,5 +51,5 @@ public class InteractionGameService implements IInteractionGameService {
         }catch (Exception e){
             return new ResponseEntity<>("error in deleting game: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-    }
+    }*/
 }

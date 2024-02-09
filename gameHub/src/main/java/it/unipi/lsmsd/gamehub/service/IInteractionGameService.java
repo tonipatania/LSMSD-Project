@@ -7,10 +7,10 @@ import java.util.List;
 
 public interface IInteractionGameService {
 
-    public List<GameNeo4j> getUserWishlist(String username);
+   /* public List<GameNeo4j> getUserWishlist(String username);
 
     public ResponseEntity<String> addGameToWishlist(String username,String name);
 
-    public ResponseEntity<String> deleteGameToWishlist(String username,String name);
+    public ResponseEntity<String> deleteGameToWishlist(String username,String name);*/
 
 }

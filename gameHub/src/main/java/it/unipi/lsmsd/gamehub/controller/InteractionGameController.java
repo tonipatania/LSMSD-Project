@@ -17,7 +17,7 @@ public class InteractionGameController {
     @Autowired
     private IInteractionGameService iInteractionGameService;
 
-    @GetMapping("userSelected/view/{userId}")
+    /*@GetMapping("userSelected/view/{userId}")
     public ResponseEntity<List<GameNeo4j>> getUSerWishlist(@PathVariable String userId, @RequestParam String username) {
         List<GameNeo4j> gameList = iInteractionGameService.getUserWishlist(username);
         if (!gameList.isEmpty()) {
@@ -36,6 +36,6 @@ public class InteractionGameController {
     @DeleteMapping("/gameSelected/deleteGame/{userId}")
     public ResponseEntity<String> deleteGameToWishlist(@PathVariable String userId, @RequestParam String username, @RequestParam String name) {
         return iInteractionGameService.deleteGameToWishlist(username, name);
-    }
+    }*/
 
 }
