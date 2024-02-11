@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 
 public interface IReviewNeo4jService {
-    public void loadReview();
+    //public void loadReview();
 
     Integer getReviewsIngoingLinks(String id);
 

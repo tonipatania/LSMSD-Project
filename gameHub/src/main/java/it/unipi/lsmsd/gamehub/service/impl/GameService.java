@@ -98,9 +98,7 @@ public class GameService implements IGameService {
     public List<Review> updateGameReview(ReviewDTO reviewDTO, int limit) {
         try {
 
-
             Pageable pageable = PageRequest.of(0, limit);
-
 
             List<Review> top20Reviews = reviewRepository.findByTitleOrderByLikeCountDesc(reviewDTO.getTitle(), pageable);
             System.out.println("stampo top 20 review\n");
@@ -152,6 +150,11 @@ public class GameService implements IGameService {
         Game game = modelMapper.map(gameDTO, Game.class);
         // inserisco il model nel db
         try {
+            // controllo se esiste un gioco con lo stesso nome
+            List<Game> existGame = gameRepository.findByName(game.getName());
+            if(!existGame.isEmpty()) {
+                return new ResponseEntity<>("there is already a game with the same name", HttpStatus.CONFLICT);
+            }
             Game saved = gameRepository.save(game);
             // mappare model in dto
             GameDTO gameInserted = modelMapper.map(saved, GameDTO.class);

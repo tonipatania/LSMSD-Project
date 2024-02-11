@@ -18,11 +18,11 @@ public interface GameNeo4jRepository extends Neo4jRepository<GameNeo4j, String> 
    @Query("MATCH (g:GameNeo4j)<-[:ADD]-(u:UserNeo4j) WHERE g.name = $name RETURN count(u) as numberOfLinks")
     int findGameIngoingLinks(@Param("name") String name);
 
-   @Query("MATCH (g:GameNeo4j {id: $gameId})<-[r:WISHLIST]-(utente:UserNeo4j)-[:WISHLIST]->(giochi:GameNeo4j)\n" +
+   @Query("MATCH (g:GameNeo4j {name: $name})<-[r:ADD]-(utente:UserNeo4j)-[:ADD]->(giochi:GameNeo4j)\n" +
            "WHERE utente.username <> $username\n" +
-           "AND NOT (giochi:GameNeo4j)<-[:WISHLIST]-(:UserNeo4j {username:$username})\n" +
+           "AND NOT (giochi:GameNeo4j)<-[:ADD]-(:UserNeo4j {username:$username})\n" +
            "RETURN giochi")
-    List<GameNeo4j> findSuggestGames(@Param("gameId") String gameId, @Param("username") String username);
+    List<GameNeo4j> findSuggestGames(@Param("name") String name, @Param("username") String username);
 
   @Query("MATCH (a:GameNeo4j) WHERE a.id = $gameId DELETE a")
   void removeGame(String gameId);

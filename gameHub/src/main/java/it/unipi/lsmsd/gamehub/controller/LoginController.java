@@ -46,8 +46,6 @@ public class LoginController {
         // neo4j ha fallito la creazione -> rimuovere utente in mongo
         return loginService.removeUser(responseEntity.getBody());
     }
-    // logout
-
 
     //remove user
 //    @DeleteMapping("/removeUser")

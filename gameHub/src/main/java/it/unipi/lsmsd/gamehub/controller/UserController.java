@@ -22,25 +22,24 @@ public class UserController {
     @Autowired
     private ILoginService iLoginService;
 
-    // to load user from mongo to neo4j
 
-    @PostMapping("/sync")
+    // to load user from mongo to neo4j
+    /*@PostMapping("/sync")
     public ResponseEntity<String> syncUser() {
         userNeo4jService.SyncUser();
         return ResponseEntity.ok("Sincronizzazione completata");
-    }
+    }*/
 
 
     // to load games from mongo to neo4j
-    @PostMapping("/loadgames")
+    /*@PostMapping("/loadgames")
     public ResponseEntity<String> reqGames() {
         userNeo4jService.loadGames();
         return ResponseEntity.ok("Giochi caricati");
-    }
+    }*/
 
 
 
-    //tengo locale(da spostare in interactionGame)
     @GetMapping("/wishlist")
     public ResponseEntity<Object> getUserWishlist(@RequestParam String username, String friendUsername) {
         List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username,friendUsername);
@@ -53,7 +52,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //tengo locale(da spostare in interactionGame)
+
     @PostMapping("/addWishlistGame")
     public ResponseEntity<String> addGameToWishlist(@RequestParam String username,String name) {
         Boolean result=userNeo4jService.addGameToWishlist(username,name);
@@ -66,8 +65,8 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //tengo locale(da spostare in interactionGame)
-    @PostMapping("/deleteWishlistGame")
+
+    @DeleteMapping("/deleteWishlistGame")
     public ResponseEntity<String> deleteGameToWishlist(@RequestParam String username,String name) {
         Boolean result=userNeo4jService.deleteGameToWishlist(username,name);
         if (result) {
@@ -79,7 +78,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //tengo locale
+
     @GetMapping("/followedUser")
     public ResponseEntity<Object> getFollowedUser(@RequestParam String username) {
         List<UserNeo4j> usersList = userNeo4jService.getFollowedUser(username);
@@ -92,7 +91,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //tengo locale
+
     @GetMapping("/SuggestFriends")
     public ResponseEntity<Object> getSuggestFriends(@RequestParam String username){
         List<UserNeo4j> userNeo4jList=userNeo4jService.getSuggestedFriends(username);
@@ -103,6 +102,7 @@ public class UserController {
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+
 
 
 
@@ -117,7 +117,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-
+    // funzione admin
     @GetMapping("/countUser/{userId}")
     public ResponseEntity<Object> countGame(@PathVariable String userId){
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);

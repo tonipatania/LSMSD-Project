@@ -26,6 +26,11 @@ public class ReviewController {
     @Autowired
     private IReviewNeo4jService reviewNeo4jService;
 
+    /*@PostMapping("loadReview")
+    public ResponseEntity<String> syncReview() {
+        reviewNeo4jService.loadReview();
+        return new ResponseEntity<>("Apposto", HttpStatus.OK);
+    }*/
 
     @GetMapping("/searchByGameTitle")
     public ResponseEntity<Object> retrieveReviewByTitle(@RequestBody ReviewDTO reviewDTO) {
@@ -52,7 +57,7 @@ public class ReviewController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }*/
 
-
+    // top 10 users with most likes in reviews
     @GetMapping("/aggr1")
     public ResponseEntity<List<ReviewDTOAggregation>> retrieveAggregateFirstAndLastUserLike() {
         List<ReviewDTOAggregation> reviewList = review2Service.retrieveAggregateFirstAndLastUserLike();
@@ -64,7 +69,7 @@ public class ReviewController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-
+    // order games by reviews userscore
     @GetMapping("/aggr2")
     public ResponseEntity<List<ReviewDTOAggregation2>> findAggregation3() {
         List<ReviewDTOAggregation2> reviewList = review2Service.findAggregation3();
