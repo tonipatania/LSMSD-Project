@@ -100,39 +100,51 @@ public class GameController {
 
 
     //admin function
+    /*Postman parameters
+    {
+        "name": "Prova",
+            "releaseDate": "Domani",
+            "price": 40,
+            "aboutTheGame": "Bellissimo",
+            "supportedLanguages": "Italian, Sicilian",
+            "developers": "Tonivico",
+            "publishers": "Tonivico",
+            "categories": "Tutte",
+            "genres": "Tutti"
+    }*/
     @PostMapping("/create/{userId}")
     public ResponseEntity<String> createGame(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
-        // controllo se si tratta di admin
+        // check if the admin perform the operation
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
         if(responseEntity.getStatusCode() != HttpStatus.OK) {
             return responseEntity;
         }
-        // aggiungo il gioco in mongo
+        // add game in mongo
         responseEntity = gameService.createGame(gameDTO);
         if(responseEntity.getStatusCode() != HttpStatus.CREATED)
             return responseEntity;
-        // aggiungo il gioco su neo4j
+        // add game in neo4j
         ResponseEntity<String> response = gameNeo4jService.addGame(responseEntity.getBody(), gameDTO.getName());
         if(response.getStatusCode() == HttpStatus.CREATED)
             return response;
-        // eliminare gioco in mongo
+        // delete game in mongo if is not created in neo4j
         return gameService.deleteGame(responseEntity.getBody());
     }
 
     //admin function
     @DeleteMapping("gameSelected/delete/{userId}")
     public ResponseEntity<String> deleteGame(@PathVariable String userId, @RequestParam String gameId) {
-        // controllo se si tratta di admin
+        // check if the admin perform the operation
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
         if(responseEntity.getStatusCode() != HttpStatus.OK) {
             return responseEntity;
         }
-        // cancello in mongo
+        // delete in mongo
         responseEntity = gameService.deleteGame(gameId);
         if(responseEntity.getStatusCode() != HttpStatus.OK) {
             return responseEntity;
         }
-        // cancello in neo4j
+        // delete in neo4j
         return gameNeo4jService.removeGame(gameId);
     }
 
@@ -140,7 +152,7 @@ public class GameController {
     //admin function
     @GetMapping("/countGame/{userId}")
     public ResponseEntity<Object> countGame(@PathVariable String userId){
-        //controllo se e admin
+        //check if the admin perform the operation
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
         if(responseEntity.getStatusCode() != HttpStatus.OK) {
             return ResponseEntity.status(responseEntity.getStatusCode()).body(responseEntity.getBody());
@@ -152,11 +164,12 @@ public class GameController {
 
     //admin function
     @GetMapping("gameSelected/getGamesIngoingLinks/{userId}")
-    public ResponseEntity<Integer> getGamesIngoingLinks(@PathVariable String userId, @RequestParam String name) {
-        // controllo se si tratta di admin
+    public ResponseEntity<Object> getGamesIngoingLinks(@PathVariable String userId, @RequestParam String name) {
+        // check if the admin perform the operation
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
         if(responseEntity.getStatusCode() != HttpStatus.OK) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            //return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(responseEntity.getStatusCode()).body(responseEntity.getBody());
         }
         Integer countLinks= gameNeo4jService.getGamesIngoingLinks(name);
         if (countLinks!=null) {
