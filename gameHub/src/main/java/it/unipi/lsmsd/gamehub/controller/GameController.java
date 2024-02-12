@@ -37,7 +37,7 @@ public class GameController {
     private GameNeo4jService gameNeo4jService;
 
     //tengo locale
-    @GetMapping("/searchFilter/{userId}")
+    @GetMapping("/searchFilter")
     public ResponseEntity<Object> retrieveGamesByParameters(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
         List<Game> gameList = gameService.retrieveGamesByParameters(gameDTO);
         if (gameList!=null && !gameList.isEmpty()) {
@@ -94,7 +94,7 @@ public class GameController {
         return ResponseEntity.ok(gameDTOPage);
     }
 
-
+    /*
     // funzione admin
     //remember to put 'title' in the Postman body
     @PatchMapping("gameSelected/updateGameReview/{userId}")
@@ -112,7 +112,7 @@ public class GameController {
         }
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
+    }*/
 
 
     // funzione admin
@@ -174,8 +174,8 @@ public class GameController {
     }
 
     //tengo locale
-
-    @GetMapping("/getGamesIngoingLinks")
+    //cambiato questo path
+    @GetMapping("gameSelected/getGamesIngoingLinks")
     public ResponseEntity<Integer> getGamesIngoingLinks(@RequestParam String name) {
         Integer countLinks= gameNeo4jService.getGamesIngoingLinks(name);
         if (countLinks!=null) {

@@ -7,7 +7,6 @@ import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
-import it.unipi.lsmsd.gamehub.repository.MongoDBAggregation.GameRepositoryCustom;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import org.modelmapper.ModelMapper;
@@ -19,6 +18,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import java.util.Comparator;
+
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -94,7 +95,7 @@ public class GameService implements IGameService {
         }
     }
 
-    @Override
+    /*@Override
     public List<Review> updateGameReview(ReviewDTO reviewDTO, int limit) {
         try {
 
@@ -143,6 +144,47 @@ public class GameService implements IGameService {
             System.out.println(e.getMessage());
             return null;
         }
+    }*/
+
+    @Override
+    public List<Review> updateGameReviewFromScratch(Game game, int limit) {
+        try {
+
+
+            Pageable pageable = PageRequest.of(0, limit);
+
+            List<Review> top20Reviews = reviewRepository.findByTitleOrderByLikeCountDesc(game.getName(), pageable);
+            List<Review> existingReviews = game.getReviews();
+            if (existingReviews == null) {
+                existingReviews = new ArrayList<>();
+            } else {
+                existingReviews.clear();  // Clear existing reviews if any
+            }
+
+            // Add the new top 20 reviews to the existing reviews
+            existingReviews.addAll(top20Reviews);
+
+            game.setReviews(existingReviews);
+
+            // Save the updated game document
+            gameRepository.save(game);
+            return existingReviews;
+
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return null;
+        }
+    }
+
+    @Override
+    public List<Review> updateGameEmbeddedReview(Game game){
+        List<Review> reviews=game.getReviews();
+        // Sort the list of reviews based on the likeCount field in descending order
+        Collections.sort(reviews, Comparator.comparingInt(Review::getLikeCount).reversed());
+        game.setReviews(reviews);
+        gameRepository.save(game);
+        return reviews;
     }
 
     @Override
@@ -161,18 +203,9 @@ public class GameService implements IGameService {
             return new ResponseEntity<>("Error in game creation: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    /*@Override
 
-    public void deleteGame(String id) {
-        // aggiungere logica di errore
-        try {
-            gameRepository.deleteById(id);
-        }catch (Exception e){
-            System.out.println(e.getMessage());
-        }
-    }*/
 
-    //AGGIUNGERE NEL MAIN-> FUNZIONE CHE CONTA IL NUMERO TOTALE DI GIOCHI(UTILIZZO IL METODO COUNT DI MONGO REPOSITORY)
+
     @Override
     public long countGameDocument() {
         try {

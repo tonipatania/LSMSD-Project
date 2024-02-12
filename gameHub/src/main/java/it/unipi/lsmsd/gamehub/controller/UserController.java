@@ -2,7 +2,9 @@ package it.unipi.lsmsd.gamehub.controller;
 
 
 
+import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
+import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
@@ -40,8 +42,8 @@ public class UserController {
 
 
 
-    //tengo locale(da spostare in interactionGame)
-    @GetMapping("/wishlist")
+    //cambiato path
+    @GetMapping("userSelected/wishlist")
     public ResponseEntity<Object> getUserWishlist(@RequestParam String username, String friendUsername) {
         List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username,friendUsername);
         if (gameList != null && !gameList.isEmpty()) {
@@ -53,8 +55,8 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //tengo locale(da spostare in interactionGame)
-    @PostMapping("/addWishlistGame")
+    //cambiato path
+    @PostMapping("userSelected/wishlist/addWishlistGame")
     public ResponseEntity<String> addGameToWishlist(@RequestParam String username,String name) {
         Boolean result=userNeo4jService.addGameToWishlist(username,name);
         if (result) {
@@ -66,8 +68,8 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //tengo locale(da spostare in interactionGame)
-    @PostMapping("/deleteWishlistGame")
+    //cambiato path
+    @PostMapping("userSelected/wishlist/deleteWishlistGame")
     public ResponseEntity<String> deleteGameToWishlist(@RequestParam String username,String name) {
         Boolean result=userNeo4jService.deleteGameToWishlist(username,name);
         if (result) {
@@ -79,8 +81,8 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //tengo locale
-    @GetMapping("/followedUser")
+    //cambiato path
+    @GetMapping("userSelected/followedUser")
     public ResponseEntity<Object> getFollowedUser(@RequestParam String username) {
         List<UserNeo4j> usersList = userNeo4jService.getFollowedUser(username);
         if (usersList!=null && !usersList.isEmpty()) {
@@ -130,13 +132,15 @@ public class UserController {
     }
 
 
-    @PostMapping("/follow")
+    //cambiato path
+    @PostMapping("userSelected/follow")
     public ResponseEntity<String> followUser(@RequestParam String followerUsername, @RequestParam String followedUsername) {
         userNeo4jService.followUser(followerUsername, followedUsername);
         return ResponseEntity.ok("Followed successfully");
     }
 
-    @PostMapping("/unfollow")
+    //cambiato path
+    @PostMapping("userSelected/unfollow")
     public ResponseEntity<String> unfollowUser(@RequestParam String followerUsername, @RequestParam String followedUsername) {
         userNeo4jService.unfollowUser(followerUsername, followedUsername);
         return ResponseEntity.ok("Unfollowed successfully");
@@ -158,5 +162,6 @@ public class UserController {
        responseEntity = iLoginService.updateUser(newUsername, username);
        return ResponseEntity.status(responseEntity.getStatusCode()).body("username update failed, please try again later");
     }
+
 }
 

@@ -1,6 +1,8 @@
 package it.unipi.lsmsd.gamehub.service;
 
+import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
+import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import org.springframework.http.ResponseEntity;
 
@@ -40,4 +42,6 @@ public interface IUserNeo4jService {
     public ResponseEntity<String> addUser(String id, String username);
     public UserNeo4j getUser(String username);
     ResponseEntity<String > updateUser(String username, String newUsername);
+
+
 }

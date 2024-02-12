@@ -2,10 +2,12 @@ package it.unipi.lsmsd.gamehub.service.impl;
 
 
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
+import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.*;
 
 
 import it.unipi.lsmsd.gamehub.repository.*;
+import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,9 +32,11 @@ public class UserNeo4jService implements IUserNeo4jService {
     @Autowired
     private GameNeo4jRepository gameNeo4jRepository;
 
-    //aggiunta per modigicare il campo likeCount
     @Autowired
     private ReviewRepository reviewRepository;
+
+    @Autowired
+    private IGameService gameService;
 
     @Override
     public void SyncUser() {
@@ -50,7 +54,7 @@ public class UserNeo4jService implements IUserNeo4jService {
     }
 
 
-    //DA MODIFICARE NEL MAIN->TROVA LA LISTA DI GIOCHI DEGLI AMICI
+
     @Override
     public List<GameNeo4j> getUserWishlist(String username,String friendUsername) {
         try {
@@ -73,7 +77,7 @@ public class UserNeo4jService implements IUserNeo4jService {
         }
     }
 
-    //DA FARE CON I BOOLEANI COME VALORI DI RITORNO
+
     @Override
     public Boolean addGameToWishlist(String username, String name) {
         try {
@@ -140,7 +144,7 @@ public class UserNeo4jService implements IUserNeo4jService {
         return userNeo4j;
     }
 
-    //QUERY DA AGGIORNARE NEL MAIN(SOLO QUA NEL SERVICE)
+
     @Override
     public List<UserNeo4j> getSuggestedFriends(String username) {
         try {
@@ -223,7 +227,7 @@ public class UserNeo4jService implements IUserNeo4jService {
 
 
 
-    //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW
+
     @Override
     public Boolean addLikeToReview(String username, String id) {
         try {
@@ -238,7 +242,63 @@ public class UserNeo4jService implements IUserNeo4jService {
                     modifiedLikeCount+=1;
                     review.setLikeCount(modifiedLikeCount);
                     reviewRepository.save(review);
-                    //return true if it is created
+
+                    //check if in the embedded review list of the game the likeCount of this review
+                    //is greater of the likeCount of the embedded review with minor likeCount, if yes
+                    //we check if the review is not inside the embedded list,if yes we update the review from scratch
+                    // otherwise if the review is inside the embedded review
+                    //list we update the embedded review list with another function that operate only with the embedded
+                    //reviews wich we have already retrieved in one read when we retrieve the game
+
+                    //now do it step by step
+                    //1)retrieve the game to retrieve the list of embedded review
+                    List<Game> game=gameRepository.findByName(review.getTitle());
+                    List<Review> embeddedReviews=game.get(0).getReviews();
+
+                    //2)retrieve the embedded review with least likeCount between the embedded reviews
+                    Review reviewWithLeastLikes = null;
+
+                    // Iterate through the embedded reviews
+                    for (Review compareReview : embeddedReviews) {
+                        // Check if reviewWithLeastLikes is null or if the current review has fewer likes
+                        if (reviewWithLeastLikes == null || compareReview.getLikeCount() < reviewWithLeastLikes.getLikeCount()) {
+                            // Update reviewWithLeastLikes to the current review
+                            reviewWithLeastLikes = compareReview;
+                        }
+                    }
+
+                    //3)check if the review.likeCount i considered is > reviewWithLeastLikes.likecCount()
+                    if(review.getLikeCount()>reviewWithLeastLikes.getLikeCount()){
+                        boolean fuondEqualReview=false;
+                        //4) now check if the review is already inside the embeddedReview
+                        for(Review compareReview : embeddedReviews){
+                            if(review.getId().equals(compareReview.getId())){
+                                //if the review is already embedded we modify the also the likeCount in the embedded review
+                                int embeddedLikeCount=compareReview.getLikeCount();
+                                compareReview.setLikeCount(embeddedLikeCount+1);
+                                gameRepository.save(game.get(0));
+                                fuondEqualReview=true;
+                            }
+                        }
+
+                        if(fuondEqualReview){
+                            //5) if yes, run the function that act only inside the embedded review(DEFINE THIS FUNCTION)
+                            gameService.updateGameEmbeddedReview(game.get(0));
+                            System.out.println("update embedded reviews");
+
+                        }else if(!fuondEqualReview){
+                            //6) if not we update from scratch considering all the reviews of that game
+
+                            gameService.updateGameReviewFromScratch(game.get(0),20);
+                            System.out.println("update reviews from scratch");
+                        }
+                    }
+
+
+
+
+
+                    //return true if the review it is created
                     return true;
                 }else{
                     //if there are some problems we delete the link
@@ -258,7 +318,8 @@ public class UserNeo4jService implements IUserNeo4jService {
 
     }
 
-    //AGGIUNGERE NEL MAIN-> FUNZIONE CHE CONTA IL NUMERO TOTALE DI UTENTI
+
+    
     @Override
     public long countUserDocument(){
         try {

@@ -27,7 +27,8 @@ public class ReviewController {
     private IReviewNeo4jService reviewNeo4jService;
 
 
-    @GetMapping("/searchByGameTitle")
+    //path cambiato
+    @GetMapping("gameSelected/searchByGameTitle")
     public ResponseEntity<Object> retrieveReviewByTitle(@RequestBody ReviewDTO reviewDTO) {
         List<Review> reviewList = review2Service.retrieveReviewByTitle(reviewDTO);
         if (reviewList!=null && !reviewList.isEmpty()) {
@@ -37,20 +38,6 @@ public class ReviewController {
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
-
-
-    //tengo locale
-    /*@GetMapping("/gameSelected/topCountReview")
-    public ResponseEntity<Object> retrieveByTitleOrderByLikeCountDesc(@RequestBody ReviewDTO reviewDTO) {
-        List<Review> reviewList = review2Service.retrieveByTitleOrderByLikeCountDesc(reviewDTO,20);
-        if (reviewList!=null && !reviewList.isEmpty()) {
-            return ResponseEntity.ok(reviewList);
-        } else if (reviewList!=null && reviewList.isEmpty()) {
-            return ResponseEntity.ok("reviewList empty");
-        }
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }*/
 
 
     @GetMapping("/aggr1")
@@ -77,15 +64,18 @@ public class ReviewController {
     }
 
 
+    //TENGO LOCALE
+    //modifico il fatto di non specificare l'id quando inserisco la recensione, faccio ritornare una Review alla
+    //funzione createReview
     @PostMapping("/gameSelected/create/{userId}")
     public ResponseEntity<String> createGame(@PathVariable String userId,@RequestBody ReviewDTO reviewDTO) {
         // creo review in mongo
-        ReviewDTO review = review2Service.createReview(reviewDTO);
+        Review review = review2Service.createReview(reviewDTO);
         if(review == null) {
             return new ResponseEntity<>("error in review creation", HttpStatus.OK);
         }
         // creo su neo4j
-        ResponseEntity<String> response = reviewNeo4jService.createReview(reviewDTO.getId());
+        ResponseEntity<String> response = reviewNeo4jService.createReview(review.getId());
         if(response.getStatusCode() == HttpStatus.CREATED) {
             return response;
         }
@@ -110,13 +100,4 @@ public class ReviewController {
         return reviewNeo4jService.removeReview(reviewId);
     }
 
-
-    @GetMapping("/getReviewsIngoingLinks")
-    public ResponseEntity<Integer> getReviewsIngoingLinks(@RequestParam String id) {
-        Integer countLinks= reviewNeo4jService.getReviewsIngoingLinks(id);
-        if (countLinks!=null) {
-            return ResponseEntity.ok(countLinks);
-        }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
 }

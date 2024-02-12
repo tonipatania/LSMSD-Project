@@ -13,9 +13,8 @@ import org.springframework.data.mongodb.core.mapping.Field;
 public class ReviewDTO {
     private String id;
     private String title;
-    //aggiunti questi
     private int userScore;
     private String comment;
     private String username;
-    //private int likeCount;
+
 }

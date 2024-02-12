@@ -18,7 +18,7 @@ public interface IReviewService {
 
     public List<Review> retrieveByTitleOrderByLikeCountDesc(ReviewDTO reviewDTO,int limit);
 
-    public ReviewDTO createReview(ReviewDTO review);
+    public Review createReview(ReviewDTO review);
     public ResponseEntity<String> deleteReview(String id);
 
 

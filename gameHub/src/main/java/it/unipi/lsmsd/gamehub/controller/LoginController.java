@@ -46,27 +46,6 @@ public class LoginController {
         // neo4j ha fallito la creazione -> rimuovere utente in mongo
         return loginService.removeUser(responseEntity.getBody());
     }
-    // logout
 
-
-    //remove user
-//    @DeleteMapping("/removeUser")
-//    public ResponseEntity<String> removeUser(@RequestParam String username) {
-//        userNeo4jService.removeUser(username);
-//        return ResponseEntity.ok("User Removed");
-//    }
-
-    //get id and username
-//    @GetMapping("/getUser")
-//    public ResponseEntity<UserNeo4j> getUser(@RequestParam String username) {
-//        UserNeo4j user = userNeo4jService.getUser(username);
-//
-//        if (user != null) {
-//            return ResponseEntity.ok(user);
-//        } else {
-//            return ResponseEntity.notFound().build();
-//        }
-//    }
-//
 
 }

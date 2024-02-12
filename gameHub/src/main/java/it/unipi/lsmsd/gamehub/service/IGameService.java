@@ -20,19 +20,18 @@ public interface IGameService {
 
     public List<GameDTOAggregation2> findAggregation4();
 
-    public List<Review> updateGameReview(ReviewDTO reviewDTO, int limit);
+    //public List<Review> updateGameReview(ReviewDTO reviewDTO, int limit);
 
-
-
-    /*public Page<GameDTO> getAll(Pageable pageable);
-    public GameDTO createGame(GameDTO gameDTO);
-    public void deleteGame(String id);*/
-
-    //AGGIUNGERE NEL MAIN-> FUNZIONE CHE CONTA IL NUMERO TOTALE DI GIOCHI
     public long countGameDocument();
 
     public Page<Game> getAll(Pageable pageable);
     public ResponseEntity<String> createGame(GameDTO gameDTO);
     public ResponseEntity<String> deleteGame(String id);
+
+    List<Review> updateGameReviewFromScratch(Game game, int limit);
+
+    public List<Review> updateGameEmbeddedReview(Game game);
+
+
 
 }
