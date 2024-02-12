@@ -18,12 +18,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import java.util.Comparator;
 
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class GameService implements IGameService {
@@ -223,6 +219,10 @@ public class GameService implements IGameService {
     @Override
     public ResponseEntity<String> deleteGame(String id) {
         try {
+            Optional<Game> game= gameRepository.findById(id);
+            if(!game.isPresent()){
+                return new ResponseEntity<>("game not deleted", HttpStatus.NOT_FOUND);
+            }
             gameRepository.deleteById(id);
             return new ResponseEntity<>("game deleted", HttpStatus.OK);
         } catch (Exception e) {

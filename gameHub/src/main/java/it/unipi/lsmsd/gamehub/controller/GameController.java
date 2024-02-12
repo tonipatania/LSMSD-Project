@@ -34,9 +34,14 @@ public class GameController {
     @Autowired
     private GameNeo4jService gameNeo4jService;
 
-    //tengo locale
-    @GetMapping("/searchFilter")
 
+    /*Postman parameters
+    {
+        "name": "BARRIER X",
+        "genres":"Strategy",
+        "avgScore":5
+    }*/
+    @GetMapping("/searchFilter")
     public ResponseEntity<Object> retrieveGamesByParameters(@RequestBody GameDTO gameDTO) {
         List<Game> gameList = gameService.retrieveGamesByParameters(gameDTO);
         if (gameList!=null && !gameList.isEmpty()) {
@@ -94,7 +99,7 @@ public class GameController {
     }
 
 
-    // funzione admin
+    //admin function
     @PostMapping("/create/{userId}")
     public ResponseEntity<String> createGame(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
         // controllo se si tratta di admin
@@ -114,7 +119,7 @@ public class GameController {
         return gameService.deleteGame(responseEntity.getBody());
     }
 
-    //funzione admin
+    //admin function
     @DeleteMapping("gameSelected/delete/{userId}")
     public ResponseEntity<String> deleteGame(@PathVariable String userId, @RequestParam String gameId) {
         // controllo se si tratta di admin
@@ -132,8 +137,7 @@ public class GameController {
     }
 
 
-    //DA AGGIUNGERE NEL MAIN-> CONTA IL NUMERO TOTALE DI GIOCHI E PUò FARLO SOLO L'ADMIN(AGGIUNGERE PARTI ANCHE DEL SERVICE)
-    //tengo locale
+    //admin function
     @GetMapping("/countGame/{userId}")
     public ResponseEntity<Object> countGame(@PathVariable String userId){
         //controllo se e admin
@@ -146,7 +150,7 @@ public class GameController {
         return ResponseEntity.ok(count);
     }
 
-    //cambiato questo path
+    //admin function
     @GetMapping("gameSelected/getGamesIngoingLinks/{userId}")
     public ResponseEntity<Integer> getGamesIngoingLinks(@PathVariable String userId, @RequestParam String name) {
         // controllo se si tratta di admin
