@@ -40,13 +40,13 @@ public class GameService implements IGameService {
         try {
             if (gameDTO.getName() != null) {
                 return gameRepository.findByName(gameDTO.getName());
-            } else if (gameDTO.getGenres() != null && gameDTO.getAvgScore() != 0) {
+            } else if (gameDTO.getGenres() != null && gameDTO.getAvgScore() != null) {
                 // Both score and genres are provided
                 return gameRepository.findByGenresAndAvgScoreGreaterThanEqual(gameDTO.getGenres(), gameDTO.getAvgScore());
             } else if (gameDTO.getGenres() != null) {
                 // Only genres are provided
                 return gameRepository.findByGenres(gameDTO.getGenres());
-            } else if (gameDTO.getAvgScore() != 0) {
+            } else if (gameDTO.getAvgScore() != null) {
                 // Only score are provided
                 return gameRepository.findByAvgScoreGreaterThanEqual(gameDTO.getAvgScore());
             } else {
