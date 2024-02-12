@@ -24,21 +24,22 @@ public class UserController {
     @Autowired
     private ILoginService iLoginService;
 
-    // to load user from mongo to neo4j
 
-    @PostMapping("/sync")
+    // to load user from mongo to neo4j
+    /*@PostMapping("/sync")
     public ResponseEntity<String> syncUser() {
         userNeo4jService.SyncUser();
         return ResponseEntity.ok("Sincronizzazione completata");
-    }
+    }*/
 
 
     // to load games from mongo to neo4j
-    @PostMapping("/loadgames")
+    /*@PostMapping("/loadgames")
     public ResponseEntity<String> reqGames() {
         userNeo4jService.loadGames();
         return ResponseEntity.ok("Giochi caricati");
-    }
+    }*/
+
 
 
 
@@ -55,6 +56,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+
     //cambiato path
     @PostMapping("userSelected/wishlist/addWishlistGame")
     public ResponseEntity<String> addGameToWishlist(@RequestParam String username,String name) {
@@ -67,6 +69,7 @@ public class UserController {
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+
 
     //cambiato path
     @PostMapping("userSelected/wishlist/deleteWishlistGame")
@@ -81,8 +84,9 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //cambiato path
-    @GetMapping("userSelected/followedUser")
+
+
+    @GetMapping("/followedUser")
     public ResponseEntity<Object> getFollowedUser(@RequestParam String username) {
         List<UserNeo4j> usersList = userNeo4jService.getFollowedUser(username);
         if (usersList!=null && !usersList.isEmpty()) {
@@ -94,7 +98,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    //tengo locale
+
     @GetMapping("/SuggestFriends")
     public ResponseEntity<Object> getSuggestFriends(@RequestParam String username){
         List<UserNeo4j> userNeo4jList=userNeo4jService.getSuggestedFriends(username);
@@ -105,6 +109,7 @@ public class UserController {
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
+
 
 
 
@@ -119,7 +124,7 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-
+    // funzione admin
     @GetMapping("/countUser/{userId}")
     public ResponseEntity<Object> countGame(@PathVariable String userId){
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
@@ -161,6 +166,18 @@ public class UserController {
        // se fallisce riporto l username allo stato iniziale
        responseEntity = iLoginService.updateUser(newUsername, username);
        return ResponseEntity.status(responseEntity.getStatusCode()).body("username update failed, please try again later");
+    }
+
+    @GetMapping("/getUser")
+    public ResponseEntity<Object> getUser(@RequestParam String username) {
+        UserNeo4j userNeo4j = userNeo4jService.getUser(username);
+        if (userNeo4j!=null && !userNeo4j.getId().equals("null")) {
+            return ResponseEntity.ok(userNeo4j);
+        }else if(userNeo4j.getId().equals("null")){
+            return ResponseEntity.ok("user not found");
+        }
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
 }

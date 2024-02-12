@@ -319,7 +319,7 @@ public class UserNeo4jService implements IUserNeo4jService {
     }
 
 
-    
+
     @Override
     public long countUserDocument(){
         try {
@@ -353,7 +353,20 @@ public class UserNeo4jService implements IUserNeo4jService {
 
     }
     public UserNeo4j getUser(String username){
-        return userNeo4jRepository.getUser(username);
+
+        try{
+            UserNeo4j userNeo4j= userNeo4jRepository.getUser(username);
+            if(userNeo4j!=null){
+                return userNeo4j;
+            }else {
+                UserNeo4j userNeo4j1=new UserNeo4j();
+                userNeo4j1.setId("null");
+                return userNeo4j1;
+            }
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return null;
+        }
     }
     public ResponseEntity<String> updateUser(String username, String newUsername){
         try {

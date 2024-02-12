@@ -1,10 +1,12 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
 
+import it.unipi.lsmsd.gamehub.DTO.ReviewDTOAggregation2;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.repository.GameNeo4jRepository;
 import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
 import it.unipi.lsmsd.gamehub.service.IGameNeo4jService;
+import it.unipi.lsmsd.gamehub.service.IReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,8 @@ public class GameNeo4jService implements IGameNeo4jService {
     private GameNeo4jRepository gameNeo4jRepository;
     @Autowired
     private UserNeo4jRepository userNeo4jRepository;
+    @Autowired
+    private IReviewService reviewService;
 
     @Override
     public Integer getGamesIngoingLinks(String name) {
@@ -34,11 +38,22 @@ public class GameNeo4jService implements IGameNeo4jService {
         try {
             // recupero i giochi della wishlist
             List<GameNeo4j> gameWishlist = userNeo4jRepository.findByUsername(username);
-            // scelgo un gioco casuale
             Random random = new Random();
-            int randomIndex = random.nextInt(gameWishlist.size());
+            int randomIndex;
+            String name;
+            // se la wishlist e vuota parto dal gioco la cui recensione ha piu voti
+            if(gameWishlist.isEmpty()) {
+                List<ReviewDTOAggregation2> reviewList = reviewService.findAggregation3();
+                name = reviewList.get(0).getTitle();
+            }
+            else {
+                // scelgo un gioco casuale della mia wishlist
+                randomIndex = random.nextInt(gameWishlist.size());
+                name = gameWishlist.get(randomIndex).getName();
+            }
 
-            List<GameNeo4j> games = gameNeo4jRepository.findSuggestGames(gameWishlist.get(randomIndex).getId(), username);
+
+            List<GameNeo4j> games = gameNeo4jRepository.findSuggestGames(name, username);
 //            ModelMapper modelMapper = new ModelMapper();
 //            List<GameDTO> gameDTOS = games.stream()
 //                    .map(game -> modelMapper.map(game, GameDTO.class))

@@ -25,13 +25,15 @@ public class ReviewNeo4jService implements IReviewNeo4jService {
 
     @Autowired
     ReviewNeo4jRepository reviewNeo4jRepository;
-    @Override
+
+    /*@Override
     public void loadReview() {
             List<Review> reviews = reviewRepository.findAll();
             ModelMapper modelMapper = new ModelMapper();
             List<ReviewNeo4j> graphReviews = reviews.stream().map(Review -> modelMapper.map(Review, ReviewNeo4j.class)).toList();
-            reviewNeo4jRepository.saveAll(graphReviews);
-    }
+            for(int i=0; i<20; i++)
+                reviewNeo4jRepository.save(graphReviews.get(i));
+    }*/
 
     public Integer getReviewsIngoingLinks(String id){
         try {

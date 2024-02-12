@@ -31,14 +31,13 @@ public class GameController {
     @Autowired
     private ILoginService iLoginService;
 
-
-
     @Autowired
     private GameNeo4jService gameNeo4jService;
 
     //tengo locale
     @GetMapping("/searchFilter")
-    public ResponseEntity<Object> retrieveGamesByParameters(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
+
+    public ResponseEntity<Object> retrieveGamesByParameters(@RequestBody GameDTO gameDTO) {
         List<Game> gameList = gameService.retrieveGamesByParameters(gameDTO);
         if (gameList!=null && !gameList.isEmpty()) {
             return ResponseEntity.ok(gameList);
@@ -51,7 +50,7 @@ public class GameController {
     }
 
 
-    //tengo locale
+    //  average score for each genre - descending order
     @GetMapping("/gameAggr1")
     public ResponseEntity<Object> retrieveAggregateGamesByGenresAndSortByScore() {
         List<GameDTOAggregation> gameList = gameService.retrieveAggregateGamesByGenresAndSortByScore();
@@ -65,7 +64,7 @@ public class GameController {
     }
 
 
-    //tengo locale
+    // average score for each year - descending order
     @GetMapping("/gameAggr2")
     public ResponseEntity<Object> findAggregation() {
         List<GameDTOAggregation2> gameList = gameService.findAggregation4();
@@ -80,8 +79,8 @@ public class GameController {
     }
 
 
-    @GetMapping("/getAll/{userId}")
-    public ResponseEntity<Page<Game>> showGames(@PathVariable String userId, @PageableDefault(sort = { "id" }, size = 50) Pageable pageable) {
+    @GetMapping("/getAll")
+    public ResponseEntity<Page<Game>> showGames(@PageableDefault(sort = { "id" }, size = 50) Pageable pageable) {
         Page<Game> gameDTOPage = gameService.getAll(pageable);
         if (pageable.getPageNumber() >= gameDTOPage.getTotalPages()) {
             // La pagina richiesta supera il numero massimo di pagine disponibili
@@ -93,26 +92,6 @@ public class GameController {
         }
         return ResponseEntity.ok(gameDTOPage);
     }
-
-    /*
-    // funzione admin
-    //remember to put 'title' in the Postman body
-    @PatchMapping("gameSelected/updateGameReview/{userId}")
-    public ResponseEntity<Object> updateGameReview(@PathVariable String userId, @RequestBody ReviewDTO reviewDTO) {
-        // controllo se si tratta di admin
-        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
-        if(responseEntity.getStatusCode() != HttpStatus.OK) {
-            return ResponseEntity.status(responseEntity.getStatusCode()).build();
-        }
-        List<Review> reviewList = gameService.updateGameReview(reviewDTO,20);
-        if (reviewList!=null && !reviewList.isEmpty()) {
-            return ResponseEntity.ok(reviewList);
-        }else if(reviewList!=null && reviewList.isEmpty()) {
-            return ResponseEntity.ok("reviewList empty");
-        }
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }*/
 
 
     // funzione admin
@@ -157,26 +136,24 @@ public class GameController {
     //tengo locale
     @GetMapping("/countGame/{userId}")
     public ResponseEntity<Object> countGame(@PathVariable String userId){
+        //controllo se e admin
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
         if(responseEntity.getStatusCode() != HttpStatus.OK) {
             return ResponseEntity.status(responseEntity.getStatusCode()).body(responseEntity.getBody());
         }
-        /*ResponseEntity<Object> responseEntity= iLoginService.roleUser(userId);
-        if(responseEntity.getStatusCode() == HttpStatus.UNAUTHORIZED) {
-            return responseEntity;
-        }
-        else if (responseEntity.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR) {
-            return responseEntity;
-        }*/
 
         long count= gameService.countGameDocument();
         return ResponseEntity.ok(count);
     }
 
-    //tengo locale
     //cambiato questo path
-    @GetMapping("gameSelected/getGamesIngoingLinks")
-    public ResponseEntity<Integer> getGamesIngoingLinks(@RequestParam String name) {
+    @GetMapping("gameSelected/getGamesIngoingLinks/{userId}")
+    public ResponseEntity<Integer> getGamesIngoingLinks(@PathVariable String userId, @RequestParam String name) {
+        // controllo se si tratta di admin
+        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
+        if(responseEntity.getStatusCode() != HttpStatus.OK) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Integer countLinks= gameNeo4jService.getGamesIngoingLinks(name);
         if (countLinks!=null) {
             return ResponseEntity.ok(countLinks);
@@ -187,11 +164,9 @@ public class GameController {
     }
 
 
-
     @GetMapping("/suggestGames/{username}")
     public ResponseEntity<List<GameNeo4j>> suggestGames(@PathVariable String username) {
         return gameNeo4jService.getSuggestGames(username);
     }
-
 }
 

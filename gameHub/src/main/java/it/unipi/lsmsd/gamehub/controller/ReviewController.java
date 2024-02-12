@@ -26,6 +26,11 @@ public class ReviewController {
     @Autowired
     private IReviewNeo4jService reviewNeo4jService;
 
+    /*@PostMapping("loadReview")
+    public ResponseEntity<String> syncReview() {
+        reviewNeo4jService.loadReview();
+        return new ResponseEntity<>("Apposto", HttpStatus.OK);
+    }*/
 
     //path cambiato
     @GetMapping("gameSelected/searchByGameTitle")
@@ -51,7 +56,7 @@ public class ReviewController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-
+    // order games by reviews userscore
     @GetMapping("/aggr2")
     public ResponseEntity<List<ReviewDTOAggregation2>> findAggregation3() {
         List<ReviewDTOAggregation2> reviewList = review2Service.findAggregation3();
