@@ -32,8 +32,8 @@ public interface IUserNeo4jService {
 
 
 
-    void followUser(String followerUsername, String followedUsername);
-    void unfollowUser(String followerUsername, String followedUsername);
+    Boolean followUser(String followerUsername, String followedUsername);
+    Boolean unfollowUser(String followerUsername, String followedUsername);
     public ResponseEntity<String> addUser(String id, String username);
     public UserNeo4j getUser(String username);
     ResponseEntity<String > updateUser(String username, String newUsername);

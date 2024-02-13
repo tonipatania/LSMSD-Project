@@ -331,12 +331,37 @@ public class UserNeo4jService implements IUserNeo4jService {
     }
 
     @Override
-    public void followUser(String followerUsername, String followedUsername) {
-        userNeo4jRepository.followUser(followerUsername, followedUsername);
+    public Boolean followUser(String followerUsername, String followedUsername) {
+
+        try {
+
+            if(userNeo4jRepository.getUser(followedUsername)!=null){
+                userNeo4jRepository.followUser(followerUsername, followedUsername);
+                return true;
+            }
+            return false;
+
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return null;
+        }
     }
     @Override
-    public void unfollowUser(String followerUsername, String followedUsername) {
-        userNeo4jRepository.unfollowUser(followerUsername, followedUsername);
+    public Boolean unfollowUser(String followerUsername, String followedUsername) {
+        try {
+            List<UserNeo4j> userNeo4jList=userNeo4jRepository.findFollowedUsers(followerUsername);
+            for(UserNeo4j userNeo4j:userNeo4jList){
+                if(userNeo4j.getUsername().equals(followedUsername)){
+                    userNeo4jRepository.unfollowUser(followerUsername, followedUsername);
+                    return true;
+                }
+            }
+            return false;
+
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return null;
+        }
     }
 
     public void removeUser(String username) {

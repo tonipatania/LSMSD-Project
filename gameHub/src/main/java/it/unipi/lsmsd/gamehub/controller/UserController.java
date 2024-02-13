@@ -140,15 +140,26 @@ public class UserController {
     //cambiato path
     @PostMapping("userSelected/follow")
     public ResponseEntity<String> followUser(@RequestParam String followerUsername, @RequestParam String followedUsername) {
-        userNeo4jService.followUser(followerUsername, followedUsername);
-        return ResponseEntity.ok("Followed successfully");
+        Boolean result=userNeo4jService.followUser(followerUsername, followedUsername);
+        if(result){
+            return ResponseEntity.ok("Followed successfully");
+        }else if(!result){
+            return ResponseEntity.ok("Followed not successfully");
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
     //cambiato path
     @PostMapping("userSelected/unfollow")
     public ResponseEntity<String> unfollowUser(@RequestParam String followerUsername, @RequestParam String followedUsername) {
-        userNeo4jService.unfollowUser(followerUsername, followedUsername);
-        return ResponseEntity.ok("Unfollowed successfully");
+        Boolean result=userNeo4jService.unfollowUser(followerUsername, followedUsername);
+        if(result){
+            return ResponseEntity.ok("Unfollowed successfully");
+        }else if(!result){
+            return ResponseEntity.ok("Unfollowed not successfully");
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+
     }
     //update username on the basis of old username
     @PatchMapping("/updateUser")
