@@ -70,7 +70,7 @@ public class UserNeo4jService implements IUserNeo4jService {
                 }
             }
 
-            return userNeo4jRepository.findByUsername(friendUsername);
+            return Collections.emptyList();
         }catch (Exception e){
             System.out.println(e.getMessage());
             return null;

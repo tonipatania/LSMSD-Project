@@ -36,9 +36,9 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
  @Query("MATCH (user:UserNeo4j{username:$username})-[like:LIKE]->(review:ReviewNeo4j{id: $id}) DELETE like")
  void deleteLikeFromReview(@Param("username") String username, @Param("id") String id);
 
-    @Query("MATCH (a:UserNeo4j {username: $followerUsername}), (b:UserNeo4j {username: $followedUsername}) MERGE (a)-[:FOLLOWS]->(b)")
+    @Query("MATCH (a:UserNeo4j {username: $followerUsername}), (b:UserNeo4j {username: $followedUsername}) MERGE (a)-[:FOLLOW]->(b)")
     void followUser(String followerUsername, String followedUsername);
-    @Query("MATCH (a:UserNeo4j {username: $followerUsername})-[r:FOLLOWS]->(b:UserNeo4j {username: $followedUsername}) DELETE r")
+    @Query("MATCH (a:UserNeo4j {username: $followerUsername})-[r:FOLLOW]->(b:UserNeo4j {username: $followedUsername}) DELETE r")
     void unfollowUser(String followerUsername, String followedUsername);
 
     // Method to remove a like based on username and game ID

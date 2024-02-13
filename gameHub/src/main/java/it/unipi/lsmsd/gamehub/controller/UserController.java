@@ -43,7 +43,7 @@ public class UserController {
 
 
 
-    //cambiato path
+
     @GetMapping("userSelected/wishlist")
     public ResponseEntity<Object> getUserWishlist(@RequestParam String username, String friendUsername) {
         List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username,friendUsername);
@@ -58,7 +58,7 @@ public class UserController {
 
 
     //cambiato path
-    @PostMapping("userSelected/wishlist/addWishlistGame")
+    @PostMapping("wishlist/addWishlistGame")
     public ResponseEntity<String> addGameToWishlist(@RequestParam String username,String name) {
         Boolean result=userNeo4jService.addGameToWishlist(username,name);
         if (result) {
@@ -72,7 +72,7 @@ public class UserController {
 
 
     //cambiato path
-    @PostMapping("userSelected/wishlist/deleteWishlistGame")
+    @PostMapping("wishlist/deleteWishlistGame")
     public ResponseEntity<String> deleteGameToWishlist(@RequestParam String username,String name) {
         Boolean result=userNeo4jService.deleteGameToWishlist(username,name);
         if (result) {
