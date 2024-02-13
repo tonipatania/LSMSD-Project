@@ -26,13 +26,12 @@ public class ReviewController {
     @Autowired
     private IReviewNeo4jService reviewNeo4jService;
 
-    /*@PostMapping("loadReview")
-    public ResponseEntity<String> syncReview() {
-        reviewNeo4jService.loadReview();
-        return new ResponseEntity<>("Apposto", HttpStatus.OK);
-    }*/
 
-    //path cambiato
+
+    /*Postman parameters
+    {
+        "title":"Galactic Bowling"
+    }*/
     @GetMapping("gameSelected/searchByGameTitle")
     public ResponseEntity<Object> retrieveReviewByTitle(@RequestBody ReviewDTO reviewDTO) {
         List<Review> reviewList = review2Service.retrieveReviewByTitle(reviewDTO);
@@ -69,11 +68,15 @@ public class ReviewController {
     }
 
 
-    //TENGO LOCALE
-    //modifico il fatto di non specificare l'id quando inserisco la recensione, faccio ritornare una Review alla
-    //funzione createReview
-    @PostMapping("/gameSelected/create/{userId}")
-    public ResponseEntity<String> createGame(@PathVariable String userId,@RequestBody ReviewDTO reviewDTO) {
+    /*Postman parameters
+    {
+        "title":"BARRIER X",
+            "username":"Kaistlin",
+            "comment":"Amazing",
+            "userScore":8
+    }*/
+    @PostMapping("/gameSelected/create")
+    public ResponseEntity<String> createGame(@RequestBody ReviewDTO reviewDTO) {
         // creo review in mongo
         Review review = review2Service.createReview(reviewDTO);
         if(review == null) {

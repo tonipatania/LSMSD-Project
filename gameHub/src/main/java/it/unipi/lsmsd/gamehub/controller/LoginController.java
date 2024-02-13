@@ -20,6 +20,11 @@ public class LoginController {
     @Autowired
     private IUserNeo4jService userNeo4jService;
 
+    /*Postman parameters
+    {
+        "username": "Lunark",
+        "password": "jrmag6azycv"
+    }*/
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginDTO loginDTO) {
         AuthResponse authResponse = loginService.authenticate(loginDTO);
@@ -32,6 +37,14 @@ public class LoginController {
     }
 
 
+    /*Postman parameters
+    {
+        "name": "Prova",
+            "surname": "Prova",
+            "username": "prova",
+            "email": "prova@gmail.it",
+            "password": "prova"
+    }*/
     @PostMapping("/signup")
     public ResponseEntity<String> registration(@RequestBody RegistrationDTO registrationDTO){
         // registro su mongo
