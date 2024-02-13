@@ -135,7 +135,7 @@ public class ReviewService implements IReviewService {
 
 
                 //before i check with one read if the review list is never updated
-                if(game.get(0).getReviews()!=null && game.get(0).getReviews().size()==1 && game.get(0).getReviews().get(0).getId()==null){
+                if(game.get(0).getReviews()!=null && game.get(0).getReviews().size()==1 && game.get(0).getReviews().get(0).getId()==null || game.get(0).getReviews()==null || game.get(0).getReviews().isEmpty()){
 
                     //after i get the review reffering to that game to see if they are > 10, in this way we have more read operations
                     //because we have to retrieve all the reviews
