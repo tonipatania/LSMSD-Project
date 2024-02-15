@@ -1,0 +1,723 @@
+{
+	"info": {
+		"_postman_id": "b95ab52a-ce3c-49b9-95a3-b2fce46ff971",
+		"name": "gamehub",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "32161253"
+	},
+	"item": [
+		{
+			"name": "game",
+			"item": [
+				{
+					"name": "admin",
+					"item": [
+						{
+							"name": "create",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "",
+										"value": "",
+										"type": "text",
+										"disabled": true
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"name\": \"Prova\",\r\n    \"releaseDate\": \"Domani\",\r\n    \"price\": 40,\r\n    \"aboutTheGame\": \"Bellissimo\",\r\n    \"supportedLanguages\": \"Italian, Sicilian\",\r\n    \"developers\": \"Tonivico\",\r\n    \"publishers\": \"Tonivico\",\r\n    \"categories\": \"Tutte\",\r\n    \"genres\": \"Tutti\" \r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base}}game/create/6582b6ed3a6e95131310dcee",
+									"host": [
+										"{{base}}game"
+									],
+									"path": [
+										"create",
+										"6582b6ed3a6e95131310dcee"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "delete",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base}}game/gameSelected/delete/6582b6ed3a6e95131310dcee?gameId=65ca42aad8da3c72d4b0026d",
+									"host": [
+										"{{base}}game"
+									],
+									"path": [
+										"gameSelected",
+										"delete",
+										"6582b6ed3a6e95131310dcee"
+									],
+									"query": [
+										{
+											"key": "gameId",
+											"value": "65ca42aad8da3c72d4b0026d"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "countGame",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base}}game/countGame/6582b6ed3a6e95131310dcee",
+									"host": [
+										"{{base}}game"
+									],
+									"path": [
+										"countGame",
+										"6582b6ed3a6e95131310dcee"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "gameToUsers",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base}}game/gameSelected/getGamesIngoingLinks/6582b6ed3a6e95131310dcee?name=Galactic Bowling",
+									"host": [
+										"{{base}}game"
+									],
+									"path": [
+										"gameSelected",
+										"getGamesIngoingLinks",
+										"6582b6ed3a6e95131310dcee"
+									],
+									"query": [
+										{
+											"key": "name",
+											"value": "Galactic Bowling"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "getAll",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base}}game/getAll",
+							"host": [
+								"{{base}}game"
+							],
+							"path": [
+								"getAll"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1670",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "searchFilter",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "\r\n{\r\n    \"name\": \"Galactic Bowling\",\r\n    \"genres\":\"Strategy\"\r\n    //\"avgScore\":5\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base}}game/searchFilter",
+							"host": [
+								"{{base}}game"
+							],
+							"path": [
+								"searchFilter"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "aggr1",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base}}game/gameAggr1",
+							"host": [
+								"{{base}}game"
+							],
+							"path": [
+								"gameAggr1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "aggr2",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base}}game/gameAggr2",
+							"host": [
+								"{{base}}game"
+							],
+							"path": [
+								"gameAggr2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "suggestGames",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base}}game/suggestGames/Lunark",
+							"host": [
+								"{{base}}game"
+							],
+							"path": [
+								"suggestGames",
+								"Lunark"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "user",
+			"item": [
+				{
+					"name": "admin",
+					"item": [
+						{
+							"name": "countUser",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base}}user/countUser/6582b6ed3a6e95131310dced",
+									"host": [
+										"{{base}}user"
+									],
+									"path": [
+										"countUser",
+										"6582b6ed3a6e95131310dced"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "updateUser",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base}}user/updateUser?username=Jonathons&newUsername=cambio",
+							"host": [
+								"{{base}}user"
+							],
+							"path": [
+								"updateUser"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "Jonathons"
+								},
+								{
+									"key": "newUsername",
+									"value": "cambio"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "followedUser",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base}}user/followedUser?username=Lunark",
+							"host": [
+								"{{base}}user"
+							],
+							"path": [
+								"followedUser"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "Lunark"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "suggestFriends",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base}}user/SuggestFriends?username=cast87",
+							"host": [
+								"{{base}}user"
+							],
+							"path": [
+								"SuggestFriends"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "cast87"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "addLikeReview",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base}}user/reviewSelected/addLikeReview?username=JadenX&id=65ca02dff7072a0516a5fd90",
+							"host": [
+								"{{base}}user"
+							],
+							"path": [
+								"reviewSelected",
+								"addLikeReview"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "JadenX"
+								},
+								{
+									"key": "id",
+									"value": "65ca02dff7072a0516a5fd90"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "follow",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base}}user/userSelected/follow?followerUsername=Lunark&followedUsername=cast87",
+							"host": [
+								"{{base}}user"
+							],
+							"path": [
+								"userSelected",
+								"follow"
+							],
+							"query": [
+								{
+									"key": "followerUsername",
+									"value": "Lunark"
+								},
+								{
+									"key": "followedUsername",
+									"value": "cast87"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "unfollow",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base}}user/userSelected/unfollow?followerUsername=Lunark&followedUsername=cast87",
+							"host": [
+								"{{base}}user"
+							],
+							"path": [
+								"userSelected",
+								"unfollow"
+							],
+							"query": [
+								{
+									"key": "followerUsername",
+									"value": "Lunark"
+								},
+								{
+									"key": "followedUsername",
+									"value": "cast87"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "viewWishlist",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "thelizardprince",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base}}user/userSelected/wishlist?username=Lunark&friendUsername=thelizardprince",
+							"host": [
+								"{{base}}user"
+							],
+							"path": [
+								"userSelected",
+								"wishlist"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "Lunark"
+								},
+								{
+									"key": "friendUsername",
+									"value": "thelizardprince"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "addWishlistGame",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base}}user/wishlist/addWishlistGame?username=Lunark&name=Galactic Bowling",
+							"host": [
+								"{{base}}user"
+							],
+							"path": [
+								"wishlist",
+								"addWishlistGame"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "Lunark"
+								},
+								{
+									"key": "name",
+									"value": "Galactic Bowling"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "deleteWishlistGame",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base}}user/wishlist/deleteWishlistGame?username=Lunark&name=Galactic Bowling",
+							"host": [
+								"{{base}}user"
+							],
+							"path": [
+								"wishlist",
+								"deleteWishlistGame"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "Lunark"
+								},
+								{
+									"key": "name",
+									"value": "Galactic Bowling"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getUser",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base}}user/getUser?username=Lunark",
+							"host": [
+								"{{base}}user"
+							],
+							"path": [
+								"getUser"
+							],
+							"query": [
+								{
+									"key": "username",
+									"value": "Lunark"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "login",
+			"item": [
+				{
+					"name": "login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"Lunark\",\r\n    \"password\": \"jrmag6azycv\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base}}login",
+							"host": [
+								"{{base}}login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "signup",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\": \"Prova\",\r\n    \"surname\": \"Prova\",\r\n    \"username\": \"prova2\",\r\n    \"email\": \"prova@gmail.it\",\r\n    \"password\": \"prova\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base}}signup",
+							"host": [
+								"{{base}}signup"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "review",
+			"item": [
+				{
+					"name": "Admin",
+					"item": [
+						{
+							"name": "delete",
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base}}review/reviewSelected/delete/6582b6ed3a6e95131310dced?reviewId=65c9fc0ef7072a0516a5fd8e",
+									"host": [
+										"{{base}}review"
+									],
+									"path": [
+										"reviewSelected",
+										"delete",
+										"6582b6ed3a6e95131310dced"
+									],
+									"query": [
+										{
+											"key": "reviewId",
+											"value": "65c9fc0ef7072a0516a5fd8e"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "getByName",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"title\":\"BARRIER X\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base}}review/gameSelected/searchByGameTitle",
+							"host": [
+								"{{base}}review"
+							],
+							"path": [
+								"gameSelected",
+								"searchByGameTitle"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "aggr1",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base}}review/aggr1",
+							"host": [
+								"{{base}}review"
+							],
+							"path": [
+								"aggr1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "aggr2",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base}}review/aggr2",
+							"host": [
+								"{{base}}review"
+							],
+							"path": [
+								"aggr2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "create",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n\"title\":\"BARRIER X\",\r\n\"username\":\"Kaistlin\",\r\n\"comment\":\"Amazing\",\r\n\"userScore\":8\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base}}review/gameSelected/create/{userId}",
+							"host": [
+								"{{base}}review"
+							],
+							"path": [
+								"gameSelected",
+								"create",
+								"{userId}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "sync",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{base}}loadgames",
+					"host": [
+						"{{base}}loadgames"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
