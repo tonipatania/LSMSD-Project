@@ -5,7 +5,6 @@ import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
 import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation2;
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
-import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.service.IGameNeo4jService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
@@ -42,15 +41,20 @@ public class GameController {
         "avgScore":5
     }*/
     @GetMapping("/searchFilter")
-    public ResponseEntity<Object> retrieveGamesByParameters(@RequestBody GameDTO gameDTO) {
-        List<Game> gameList = gameService.retrieveGamesByParameters(gameDTO);
-        if (gameList!=null && !gameList.isEmpty()) {
-            return ResponseEntity.ok(gameList);
-        }else if(gameList!=null && gameList.isEmpty()) {
-            return ResponseEntity.ok("gameList empty");
+    public ResponseEntity<Object> retrieveGamesByParameters(@RequestParam(required = false) String name,
+                                                             @RequestParam(required = false) List<String> genres,
+                                                             @RequestParam(required = false) Integer avgScore,
+                                                             @PageableDefault(sort = { "name" }, size = 24) Pageable pageable) {
+        Page<Game> gamePage = gameService.retrieveGamesByParameters(name, genres, avgScore, pageable);
+        return ResponseEntity.ok(gamePage);
+    }
 
+    @GetMapping("/genres")
+    public ResponseEntity<Object> getAllGenres() {
+        List<String> genres = gameService.findDistinctGenres();
+        if (genres != null) {
+            return ResponseEntity.ok(genres);
         }
-
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
@@ -85,7 +89,7 @@ public class GameController {
 
 
     @GetMapping("/getAll")
-    public ResponseEntity<Page<Game>> showGames(@PageableDefault(sort = { "id" }, size = 50) Pageable pageable) {
+    public ResponseEntity<Page<Game>> showGames(@PageableDefault(sort = { "name" }, size = 50) Pageable pageable) {
         Page<Game> gameDTOPage = gameService.getAll(pageable);
         if (pageable.getPageNumber() >= gameDTOPage.getTotalPages()) {
             // La pagina richiesta supera il numero massimo di pagine disponibili
@@ -182,8 +186,14 @@ public class GameController {
 
 
     @GetMapping("/suggestGames/{username}")
-    public ResponseEntity<List<GameNeo4j>> suggestGames(@PathVariable String username) {
+    public ResponseEntity<List<Game>> suggestGames(@PathVariable String username) {
         return gameNeo4jService.getSuggestGames(username);
+    }
+
+    // games that actually have review content, used for the home page's review feed
+    @GetMapping("/withReviews")
+    public ResponseEntity<List<Game>> getGamesWithReviews(@RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(gameService.getGamesWithReviews(size));
     }
 }
 
