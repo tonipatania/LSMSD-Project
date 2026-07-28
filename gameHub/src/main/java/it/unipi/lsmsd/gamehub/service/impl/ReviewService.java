@@ -19,8 +19,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -39,49 +37,14 @@ public class ReviewService implements IReviewService {
     @Autowired
     private IGameService gameService;
 
-    //TENGO LOCALE
     @Override
     public List<Review> retrieveReviewByTitle(ReviewDTO reviewDTO) {
         try {
-            List<Game> game=gameRepository.findByName(reviewDTO.getTitle());
-            if(game!=null && !game.isEmpty()){
-                //compare if the more reviews we want to retrieve are already present il the review embedded list of the game
-                //we add one more read for this comparison
-
-
-                //retrieve the reviews embedded in game
-                List<Review> reviewEmbeddedList=game.get(0).getReviews();
-
-                //retrieve all the reviews about a game
-                List<Review> reviewNotEmbeddedList=reviewRepository.findByTitle(reviewDTO.getTitle());
-
-                List<Review> reviewsNotPresentInEmbeddedList = new ArrayList<>();
-
-                // Iterate through reviewNotEmbeddedList
-                for (Review review : reviewNotEmbeddedList) {
-                    boolean foundInEmbeddedList = false;
-                    // Check if the ID of the current review is present in the embedded list
-                    for (Review embeddedReview : reviewEmbeddedList) {
-                        if (review.getId().equals(embeddedReview.getId())) {
-                            foundInEmbeddedList = true;
-                            break;
-                        }
-                    }
-                    // If the review is not found in the embedded list, add it to reviewsNotPresentInEmbeddedList
-                    if (!foundInEmbeddedList) {
-                        reviewsNotPresentInEmbeddedList.add(review);
-                    }
-                }
-
-
-                return reviewsNotPresentInEmbeddedList;
-            }
-            return Collections.emptyList();
+            return reviewRepository.findByTitle(reviewDTO.getTitle());
         }catch (Exception e){
             System.out.println(e.getMessage());
             return null;
         }
-
     }
 
     @Override
@@ -128,26 +91,11 @@ public class ReviewService implements IReviewService {
                 Review review = modelMapper.map(reviewDTO, Review.class);
                 // inserisco il model nel db
 
-                Review saved = reviewRepository.save(review);
+                reviewRepository.save(review);
 
 
-
-
-
-                //before i check with one read if the review list is never updated
-                if(game.get(0).getReviews()!=null && game.get(0).getReviews().size()==1 && game.get(0).getReviews().get(0).getId()==null || game.get(0).getReviews()==null || game.get(0).getReviews().isEmpty()){
-
-                    //after i get the review reffering to that game to see if they are > 10, in this way we have more read operations
-                    //because we have to retrieve all the reviews
-                    List<Review> reviewList= reviewRepository.findByTitle(reviewDTO.getTitle());
-
-                    if(reviewList.size()>=1){
-                        gameService.updateGameReviewFromScratch(game.get(0),20);
-                    }
-
-
-                }
-
+                // keep the embedded top-reviews list on the game document in sync
+                gameService.updateGameReviewFromScratch(game.get(0), 20);
 
                 return review;
             }
@@ -158,24 +106,20 @@ public class ReviewService implements IReviewService {
         }
     }
 
-    //TENGO LCOALE
     @Override
     public ResponseEntity<String> deleteReview(String id) {
         try {
-            Optional<Review> review=reviewRepository.findById(id);
-            reviewRepository.deleteById(id);
-            //if is present delete the review also in the game review list
-            List<Game> game=gameRepository.findByName(review.get().getTitle());
-
-            List<Review> reviewList=game.get(0).getReviews();
-            //if present remove the review from the embedded review list
-            for (int i=0;i<reviewList.size();i++){
-                if(review.get().getId().equals(reviewList.get(i).getId())){
-                    reviewList.remove(i);
-                    gameRepository.save(game.get(0));
-                }
+            Optional<Review> review = reviewRepository.findById(id);
+            if (review.isEmpty()) {
+                return new ResponseEntity<>("Review not found", HttpStatus.NOT_FOUND);
             }
 
+            reviewRepository.deleteById(id);
+
+            List<Game> game = gameRepository.findByName(review.get().getTitle());
+            if (game != null && !game.isEmpty()) {
+                gameService.updateGameReviewFromScratch(game.get(0), 20);
+            }
 
             return new ResponseEntity<>("review deleted", HttpStatus.OK);
         }catch (Exception e) {
