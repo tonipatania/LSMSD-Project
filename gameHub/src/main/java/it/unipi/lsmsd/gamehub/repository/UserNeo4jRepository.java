@@ -26,8 +26,29 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
     @Query("MATCH (u:UserNeo4j)-[:FOLLOW]->(following:UserNeo4j) WHERE u.username = $username RETURN following")
     List<UserNeo4j> findFollowedUsers (@Param("username") String username);
 
+    @Query("MATCH (u:UserNeo4j) WHERE toLower(u.username) CONTAINS toLower($query) AND u.username <> $currentUsername RETURN u ORDER BY u.username LIMIT 20")
+    List<UserNeo4j> searchUsers(@Param("query") String query, @Param("currentUsername") String currentUsername);
+
     @Query("MATCH (u:UserNeo4j {username: $username})-[:FOLLOW]->()-[:FOLLOW]->(friends) RETURN DISTINCT friends;")
     List<UserNeo4j> findFriendsOfFriends (@Param("username") String username);
+
+    // Friends of friends not already followed, with at least 5 games in common wishlist.
+    // Computed entirely in a single Cypher query to avoid per-candidate round trips.
+    @Query("MATCH (u:UserNeo4j {username: $username})-[:ADD]->(g:GameNeo4j) " +
+           "WITH u, collect(g) AS myGames " +
+           "MATCH (u)-[:FOLLOW]->()-[:FOLLOW]->(candidate:UserNeo4j) " +
+           "WHERE candidate <> u AND NOT (u)-[:FOLLOW]->(candidate) " +
+           "MATCH (candidate)-[:ADD]->(cg:GameNeo4j) WHERE cg IN myGames " +
+           "WITH candidate, count(DISTINCT cg) AS commonGames " +
+           "WHERE commonGames >= 5 " +
+           "RETURN candidate ORDER BY rand() LIMIT 50")
+    List<UserNeo4j> findSuggestedFriends(@Param("username") String username);
+
+    @Query("MATCH (u:UserNeo4j)-[:FOLLOW]->(following:UserNeo4j) WHERE u.username = $username RETURN following ORDER BY following.username SKIP $skip LIMIT $limit")
+    List<UserNeo4j> findFollowedUsersPage(@Param("username") String username, @Param("skip") long skip, @Param("limit") long limit);
+
+    @Query("MATCH (u:UserNeo4j)-[:FOLLOW]->(following:UserNeo4j) WHERE u.username = $username RETURN count(following)")
+    long countFollowedUsers(@Param("username") String username);
 
  //DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW
  @Query("MATCH (u:UserNeo4j {username:$username}), (g:ReviewNeo4j {id: $id}) OPTIONAL MATCH (u)-[r:LIKE]->(g) WITH u, g, r MERGE (u)-[:LIKE]->(g) RETURN r IS NOT NULL AS relationshipExists")
