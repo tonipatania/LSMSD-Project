@@ -5,8 +5,6 @@ import org.springframework.data.neo4j.repository.query.Query;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.data.neo4j.core.Neo4jOperations;
-
 import java.util.List;
 
 @Repository
@@ -21,7 +19,7 @@ public interface GameNeo4jRepository extends Neo4jRepository<GameNeo4j, String> 
    @Query("MATCH (g:GameNeo4j {name: $name})<-[r:ADD]-(utente:UserNeo4j)-[:ADD]->(giochi:GameNeo4j)\n" +
            "WHERE utente.username <> $username\n" +
            "AND NOT (giochi:GameNeo4j)<-[:ADD]-(:UserNeo4j {username:$username})\n" +
-           "RETURN giochi")
+           "RETURN DISTINCT giochi LIMIT 10")
     List<GameNeo4j> findSuggestGames(@Param("name") String name, @Param("username") String username);
 
   @Query("MATCH (a:GameNeo4j) WHERE a.id = $gameId DELETE a")
