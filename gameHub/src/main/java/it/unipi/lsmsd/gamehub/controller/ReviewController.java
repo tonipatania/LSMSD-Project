@@ -33,12 +33,12 @@ public class ReviewController {
         "title":"Galactic Bowling"
     }*/
     @GetMapping("gameSelected/searchByGameTitle")
-    public ResponseEntity<Object> retrieveReviewByTitle(@RequestBody ReviewDTO reviewDTO) {
+    public ResponseEntity<Object> retrieveReviewByTitle(@RequestParam String title) {
+        ReviewDTO reviewDTO = new ReviewDTO();
+        reviewDTO.setTitle(title);
         List<Review> reviewList = review2Service.retrieveReviewByTitle(reviewDTO);
-        if (reviewList!=null && !reviewList.isEmpty()) {
+        if (reviewList != null) {
             return ResponseEntity.ok(reviewList);
-        }else if (reviewList!=null && reviewList.isEmpty()){
-            return ResponseEntity.ok("reviewList empty");
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
