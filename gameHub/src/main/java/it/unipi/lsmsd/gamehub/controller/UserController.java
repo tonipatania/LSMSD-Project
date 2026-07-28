@@ -9,6 +9,9 @@ import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,19 +29,19 @@ public class UserController {
 
 
     // to load user from mongo to neo4j
-    /*@PostMapping("/sync")
+    @PostMapping("/sync")
     public ResponseEntity<String> syncUser() {
         userNeo4jService.SyncUser();
         return ResponseEntity.ok("Sincronizzazione completata");
-    }*/
+    }
 
 
     // to load games from mongo to neo4j
-    /*@PostMapping("/loadgames")
+    @PostMapping("/loadgames")
     public ResponseEntity<String> reqGames() {
         userNeo4jService.loadGames();
         return ResponseEntity.ok("Giochi caricati");
-    }*/
+    }
 
 
 
@@ -47,10 +50,10 @@ public class UserController {
     @GetMapping("userSelected/wishlist")
     public ResponseEntity<Object> getUserWishlist(@RequestParam String username, String friendUsername) {
         List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username,friendUsername);
-        if (gameList != null && !gameList.isEmpty()) {
+        if (gameList != null) {
+            // always a JSON array, even when empty: a plain-text "empty" message here is not
+            // valid JSON, and Angular's HttpClient turns an unparseable 200 body into an error
             return ResponseEntity.ok(gameList);
-        } else if (gameList != null && gameList.isEmpty()) {
-            return ResponseEntity.ok("empty gameList");
         }
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -89,23 +92,36 @@ public class UserController {
     @GetMapping("/followedUser")
     public ResponseEntity<Object> getFollowedUser(@RequestParam String username) {
         List<UserNeo4j> usersList = userNeo4jService.getFollowedUser(username);
-        if (usersList!=null && !usersList.isEmpty()) {
+        if (usersList != null) {
             return ResponseEntity.ok(usersList);
-        }else if(usersList!=null && usersList.isEmpty()){
-            return ResponseEntity.ok("friendsList empty");
         }
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    // paginated variant used by the Community page, to avoid loading the full followed-users list at once
+    @GetMapping("/followedUser/page")
+    public ResponseEntity<Page<UserNeo4j>> getFollowedUserPage(@RequestParam String username,
+                                                                @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(userNeo4jService.getFollowedUserPage(username, pageable));
+    }
+
+
+    @GetMapping("/search")
+    public ResponseEntity<Object> searchUsers(@RequestParam String query, @RequestParam String username) {
+        List<UserNeo4j> usersList = userNeo4jService.searchUsers(query, username);
+        if (usersList != null) {
+            return ResponseEntity.ok(usersList);
+        }
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
 
     @GetMapping("/SuggestFriends")
     public ResponseEntity<Object> getSuggestFriends(@RequestParam String username){
         List<UserNeo4j> userNeo4jList=userNeo4jService.getSuggestedFriends(username);
-        if (userNeo4jList!=null && !userNeo4jList.isEmpty()) {
+        if (userNeo4jList != null) {
             return ResponseEntity.ok(userNeo4jList);
-        }else if (userNeo4jList!=null && userNeo4jList.isEmpty()){
-            return ResponseEntity.ok("suggestFriendsList empty");
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
@@ -185,7 +201,11 @@ public class UserController {
         if (userNeo4j!=null && !userNeo4j.getId().equals("null")) {
             return ResponseEntity.ok(userNeo4j);
         }else if(userNeo4j.getId().equals("null")){
-            return ResponseEntity.ok("user not found");
+            // empty body rather than a plain-text message: Spring's String converter writes
+            // unquoted raw text even with an application/json content type, which Angular's
+            // HttpClient can't parse and turns into an error instead of a normal 200 response.
+            // An empty body is unambiguous and maps cleanly to null on the client.
+            return ResponseEntity.ok().build();
         }
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
