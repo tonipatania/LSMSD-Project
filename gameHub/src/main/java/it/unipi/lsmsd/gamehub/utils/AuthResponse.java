@@ -13,4 +13,10 @@ public class AuthResponse {
     private boolean success;
     private String errorMessage;
     private String username;
+    private String token;
+    private String role;
+
+    public AuthResponse(boolean success, String errorMessage, String username) {
+        this(success, errorMessage, username, null, null);
+    }
 }
