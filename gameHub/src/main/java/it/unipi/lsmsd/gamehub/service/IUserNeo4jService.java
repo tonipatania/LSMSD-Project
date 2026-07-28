@@ -4,6 +4,8 @@ import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -22,9 +24,13 @@ public interface IUserNeo4jService {
 
     List<UserNeo4j> getFollowedUser(String username);
 
+    Page<UserNeo4j> getFollowedUserPage(String username, Pageable pageable);
+
     List<UserNeo4j> getFriendsOfFriends(String username);
 
     List<UserNeo4j> getSuggestedFriends(String username);
+
+    List<UserNeo4j> searchUsers(String query, String currentUsername);
 
     public Boolean addLikeToReview(String username,String id);
 

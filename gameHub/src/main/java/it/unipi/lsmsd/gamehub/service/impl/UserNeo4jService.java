@@ -11,6 +11,9 @@ import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -81,9 +84,10 @@ public class UserNeo4jService implements IUserNeo4jService {
     @Override
     public Boolean addGameToWishlist(String username, String name) {
         try {
-            //check if the game exists
+            //check both the game and the user exist in the graph before linking them
             GameNeo4j gameNeo4j=gameNeo4jRepository.findGameByName(name);
-            if(gameNeo4j!=null){
+            UserNeo4j userNeo4j=userNeo4jRepository.getUser(username);
+            if(gameNeo4j!=null && userNeo4j!=null){
                 userNeo4jRepository.addGameToUser(username, name);
                 return true;
             }
@@ -128,6 +132,19 @@ public class UserNeo4jService implements IUserNeo4jService {
     }
 
     @Override
+    public Page<UserNeo4j> getFollowedUserPage(String username, Pageable pageable) {
+        try {
+            List<UserNeo4j> content = userNeo4jRepository.findFollowedUsersPage(
+                    username, pageable.getOffset(), pageable.getPageSize());
+            long total = userNeo4jRepository.countFollowedUsers(username);
+            return new PageImpl<>(content, pageable, total);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return Page.empty(pageable);
+        }
+    }
+
+    @Override
     public List<UserNeo4j> getFriendsOfFriends(String username) {
         try {
             return userNeo4jRepository.findFriendsOfFriends(username);
@@ -148,78 +165,20 @@ public class UserNeo4jService implements IUserNeo4jService {
     @Override
     public List<UserNeo4j> getSuggestedFriends(String username) {
         try {
-
-            //get the user followed by the username
-            List<UserNeo4j> followedUser = userNeo4jRepository.findFollowedUsers(username);
-            //get the user wishlist by the username
-            List<GameNeo4j> addedGames = userNeo4jRepository.findByUsername(username);
-            //get the list of friends of the followed users
-            List<UserNeo4j> friendsOfFriends = userNeo4jRepository.findFriendsOfFriends(username);
-            //if the userFriendList is empty return an empy list
-            if(friendsOfFriends.isEmpty()){
-                return friendsOfFriends;
-            }
-
-            // Generate a list of friends of friends not in the followedUser list
-            List<UserNeo4j> selectFriendsOfFriends = friendsOfFriends.stream()
-                    .filter(friend -> followedUser.stream().noneMatch(f -> f.getUsername().equals(friend.getUsername())))
-                    //.limit(2)
-                    .collect(Collectors.toList());
-
-
-            //limit the number of friendOfFriends to compare the wishlist in order to reduce the time to compare the wishlists
-            Random random = new Random();
-            Set<Integer> randomPositions = new HashSet<>();
-
-            // Generate 100 random different integers
-            while (randomPositions.size() < 50) {
-                randomPositions.add(random.nextInt(selectFriendsOfFriends.size()));
-            }
-
-            // Create a new list with elements at the random positions
-            //The map operation takes each position and retrieves the corresponding element from the selectFriendsOfFriends
-            // list using selectFriendsOfFriends::get. Finally, collect(Collectors.toList()) collects these elements into a new list.
-            List<UserNeo4j> resultFriendsOfFriends = randomPositions.stream()
-                    .map(selectFriendsOfFriends::get)
-                    .collect(Collectors.toList());
-
-            /*for(int i=0;i<resultFriendsOfFriends.size();i++){
-                System.out.println(resultFriendsOfFriends.get(i).getUsername());
-            }*/
-
-
-            //final result
-            List<UserNeo4j> suggestedFriends = new ArrayList<>();
-
-
-
-
-            for (int i = 0; i < resultFriendsOfFriends.size(); i++) {
-                System.out.println(resultFriendsOfFriends.get(i).getUsername());
-                List<GameNeo4j> friendOfFriendWishlist = userNeo4jRepository.findByUsername(resultFriendsOfFriends.get(i).getUsername());
-                Set<String> friendOfFriendGameNames = friendOfFriendWishlist.stream()
-                        .map(GameNeo4j::getName)
-                        .collect(Collectors.toSet());
-
-                // Compare the two sets and count the common games
-                long commonGamesCount = addedGames.stream()
-                        .map(GameNeo4j::getName)
-                        .filter(friendOfFriendGameNames::contains)
-                        .distinct()
-                        .count();
-
-                // If there are 5 or more common games, add the user to a userlist
-                if (commonGamesCount >= 5) {
-                    suggestedFriends.add(resultFriendsOfFriends.get(i));
-                }
-            }
-
-            if (!suggestedFriends.isEmpty()) {
-                return suggestedFriends;
-            }
-            //System.out.println("suggestFriendsList empty");
-            return suggestedFriends;
+            // Friends of friends not already followed, with >= 5 games in common wishlist,
+            // computed server-side in a single query (see UserNeo4jRepository#findSuggestedFriends).
+            return userNeo4jRepository.findSuggestedFriends(username);
         }catch (Exception e){
+            System.out.println(e.getMessage());
+            return null;
+        }
+    }
+
+    @Override
+    public List<UserNeo4j> searchUsers(String query, String currentUsername) {
+        try {
+            return userNeo4jRepository.searchUsers(query, currentUsername);
+        } catch (Exception e) {
             System.out.println(e.getMessage());
             return null;
         }
@@ -335,7 +294,8 @@ public class UserNeo4jService implements IUserNeo4jService {
 
         try {
 
-            if(userNeo4jRepository.getUser(followedUsername)!=null){
+            //check both sides of the relationship exist in the graph before linking them
+            if(userNeo4jRepository.getUser(followerUsername)!=null && userNeo4jRepository.getUser(followedUsername)!=null){
                 userNeo4jRepository.followUser(followerUsername, followedUsername);
                 return true;
             }
