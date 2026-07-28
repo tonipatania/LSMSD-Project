@@ -32,28 +32,26 @@ public class GameService implements IGameService {
 
 
     @Override
-    public List<Game> retrieveGamesByParameters(GameDTO gameDTO) {
+    public Page<Game> retrieveGamesByParameters(String name, List<String> genres, Integer avgScore, Pageable pageable) {
         try {
-            if (gameDTO.getName() != null) {
-                return gameRepository.findByName(gameDTO.getName());
-            } else if (gameDTO.getGenres() != null && gameDTO.getAvgScore() != null) {
-                // Both score and genres are provided
-                return gameRepository.findByGenresAndAvgScoreGreaterThanEqual(gameDTO.getGenres(), gameDTO.getAvgScore());
-            } else if (gameDTO.getGenres() != null) {
-                // Only genres are provided
-                return gameRepository.findByGenres(gameDTO.getGenres());
-            } else if (gameDTO.getAvgScore() != null) {
-                // Only score are provided
-                return gameRepository.findByAvgScoreGreaterThanEqual(gameDTO.getAvgScore());
-            } else {
-                // No specific criteria, return empty list
-                return Collections.emptyList();
+            if ((name == null || name.isBlank()) && (genres == null || genres.isEmpty()) && avgScore == null) {
+                return new PageImpl<>(Collections.emptyList(), pageable, 0);
             }
+            return gameRepository.searchGames(name, genres, avgScore, pageable);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+    }
+
+    @Override
+    public List<String> findDistinctGenres() {
+        try {
+            return gameRepository.findDistinctGenres();
         } catch (Exception e) {
             System.out.println(e.getMessage());
             return null;
         }
-
     }
 
     @Override
@@ -75,6 +73,16 @@ public class GameService implements IGameService {
         } catch (Exception e) {
             System.out.println(e.getMessage());
             return null;
+        }
+    }
+
+    @Override
+    public List<Game> getGamesWithReviews(int limit) {
+        try {
+            return gameRepository.findGamesWithReviews(PageRequest.of(0, limit));
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return Collections.emptyList();
         }
     }
 

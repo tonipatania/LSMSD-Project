@@ -14,7 +14,9 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 
 public interface IGameService {
-    public List<Game> retrieveGamesByParameters(GameDTO gameDTO);
+    public Page<Game> retrieveGamesByParameters(String name, List<String> genres, Integer avgScore, Pageable pageable);
+
+    public List<String> findDistinctGenres();
 
     public List<GameDTOAggregation> retrieveAggregateGamesByGenresAndSortByScore();
 
@@ -25,6 +27,7 @@ public interface IGameService {
     public long countGameDocument();
 
     public Page<Game> getAll(Pageable pageable);
+    public List<Game> getGamesWithReviews(int limit);
     public ResponseEntity<String> createGame(GameDTO gameDTO);
     public ResponseEntity<String> deleteGame(String id);
 
