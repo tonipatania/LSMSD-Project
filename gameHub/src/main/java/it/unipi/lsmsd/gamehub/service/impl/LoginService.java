@@ -5,12 +5,14 @@ import it.unipi.lsmsd.gamehub.DTO.LoginDTO;
 import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
 import it.unipi.lsmsd.gamehub.model.User;
 import it.unipi.lsmsd.gamehub.repository.LoginRepository;
+import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -21,6 +23,12 @@ public class LoginService implements ILoginService {
     @Autowired
     private LoginRepository loginRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtService jwtService;
+
     @Override
     public AuthResponse authenticate(LoginDTO loginDTO) {
         // retrieve value
@@ -28,17 +36,40 @@ public class LoginService implements ILoginService {
         String password = loginDTO.getPassword();
         try {
             User u = loginRepository.findByUsername(username);
-            if(Objects.equals(u.getPassword(), password)) {
-                return new AuthResponse(true, "Login Successful", username);
-            }
-            else {
+            if (u == null || !matchesPassword(u, password)) {
                 return new AuthResponse(false, "Invalid username or password", null);
             }
+
+            String token = jwtService.generateToken(u.getUsername(), resolveRole(u));
+            return new AuthResponse(true, "Login Successful", u.getUsername(), token, u.getRole());
         }
         catch (MongoException e) {
             System.out.println("Errore durante il recupero dell'utente da MongoDB: " + e.getMessage());
             return new AuthResponse(false, "Error occurred while authenticating", null);
         }
+    }
+
+    // il dump iniziale contiene password in chiaro: al primo login corretto vengono
+    // sostituite con l'hash BCrypt, così i dati esistenti restano utilizzabili
+    private boolean matchesPassword(User user, String rawPassword) {
+        String stored = user.getPassword();
+        if (stored == null) {
+            return false;
+        }
+        if (stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$")) {
+            return passwordEncoder.matches(rawPassword, stored);
+        }
+        if (!Objects.equals(stored, rawPassword)) {
+            return false;
+        }
+        user.setPassword(passwordEncoder.encode(rawPassword));
+        loginRepository.save(user);
+        return true;
+    }
+
+    // roleUser() considera admin qualunque utente con un ruolo valorizzato
+    private String resolveRole(User user) {
+        return user.getRole() == null ? "USER" : "ADMIN";
     }
     public ResponseEntity<String> roleUser(String userId) {
         try {
@@ -78,7 +109,7 @@ public class LoginService implements ILoginService {
             newUser.setName(name);
             newUser.setSurname(surname);
             newUser.setUsername(username);
-            newUser.setPassword(password);
+            newUser.setPassword(passwordEncoder.encode(password));
             newUser.setEmail(email);
 
             // Save the new user to the database
