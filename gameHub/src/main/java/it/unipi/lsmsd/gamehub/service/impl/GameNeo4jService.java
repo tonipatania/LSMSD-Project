@@ -2,8 +2,10 @@ package it.unipi.lsmsd.gamehub.service.impl;
 
 
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTOAggregation2;
+import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.repository.GameNeo4jRepository;
+import it.unipi.lsmsd.gamehub.repository.GameRepository;
 import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
 import it.unipi.lsmsd.gamehub.service.IGameNeo4jService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
@@ -22,6 +24,8 @@ public class GameNeo4jService implements IGameNeo4jService {
     @Autowired
     private UserNeo4jRepository userNeo4jRepository;
     @Autowired
+    private GameRepository gameRepository;
+    @Autowired
     private IReviewService reviewService;
 
     @Override
@@ -34,7 +38,7 @@ public class GameNeo4jService implements IGameNeo4jService {
         }
     }
     @Override
-    public ResponseEntity<List<GameNeo4j>> getSuggestGames(String username) {
+    public ResponseEntity<List<Game>> getSuggestGames(String username) {
         try {
             // recupero i giochi della wishlist
             List<GameNeo4j> gameWishlist = userNeo4jRepository.findByUsername(username);
@@ -54,11 +58,11 @@ public class GameNeo4jService implements IGameNeo4jService {
 
 
             List<GameNeo4j> games = gameNeo4jRepository.findSuggestGames(name, username);
-//            ModelMapper modelMapper = new ModelMapper();
-//            List<GameDTO> gameDTOS = games.stream()
-//                    .map(game -> modelMapper.map(game, GameDTO.class))
-//                    .collect(Collectors.toList());
-            return new ResponseEntity<>(games, HttpStatus.OK);
+            // GameNeo4j only carries id+name; fetch the full Mongo documents (image, genres,
+            // score) for the card UI, since the ids are shared between the two stores
+            List<String> ids = games.stream().map(GameNeo4j::getId).toList();
+            List<Game> enrichedGames = gameRepository.findAllById(ids);
+            return new ResponseEntity<>(enrichedGames, HttpStatus.OK);
         } catch (Exception e) {
             System.out.println("Errore durante l accesso al database: " + e.getMessage());
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
