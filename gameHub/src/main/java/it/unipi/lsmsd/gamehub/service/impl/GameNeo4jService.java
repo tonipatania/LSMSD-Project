@@ -1,32 +1,24 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
 
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTOAggregation2;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.repository.GameNeo4jRepository;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
-import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
 import it.unipi.lsmsd.gamehub.service.IGameNeo4jService;
-import it.unipi.lsmsd.gamehub.service.IReviewService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Random;
 
 @Service
 public class GameNeo4jService implements IGameNeo4jService {
     @Autowired
     private GameNeo4jRepository gameNeo4jRepository;
     @Autowired
-    private UserNeo4jRepository userNeo4jRepository;
-    @Autowired
     private GameRepository gameRepository;
-    @Autowired
-    private IReviewService reviewService;
 
     @Override
     public Integer getGamesIngoingLinks(String name) {
@@ -37,27 +29,21 @@ public class GameNeo4jService implements IGameNeo4jService {
             return null;
         }
     }
+    // numero di giochi consigliati mostrati nella sidebar della Home
+    private static final int SUGGESTIONS_LIMIT = 10;
+
     @Override
     public ResponseEntity<List<Game>> getSuggestGames(String username) {
         try {
-            // recupero i giochi della wishlist
-            List<GameNeo4j> gameWishlist = userNeo4jRepository.findByUsername(username);
-            Random random = new Random();
-            int randomIndex;
-            String name;
-            // se la wishlist e vuota parto dal gioco la cui recensione ha piu voti
-            if(gameWishlist.isEmpty()) {
-                List<ReviewDTOAggregation2> reviewList = reviewService.findAggregation3();
-                name = reviewList.get(0).getTitle();
-            }
-            else {
-                // scelgo un gioco casuale della mia wishlist
-                randomIndex = random.nextInt(gameWishlist.size());
-                name = gameWishlist.get(randomIndex).getName();
+            // Consiglio basato su tutta la wishlist. Se la wishlist e' vuota si ripiega sui giochi
+            // piu desiderati: la vecchia versione partiva dal gioco con la media recensioni piu
+            // alta, che nel dataset e' quasi sempre un titolo di nicchia con zero wishlist, quindi
+            // il suggerimento risultava sistematicamente vuoto.
+            List<GameNeo4j> games = gameNeo4jRepository.findSuggestGames(username, SUGGESTIONS_LIMIT);
+            if (games.isEmpty()) {
+                games = gameNeo4jRepository.findMostWishlistedGames(SUGGESTIONS_LIMIT);
             }
 
-
-            List<GameNeo4j> games = gameNeo4jRepository.findSuggestGames(name, username);
             // GameNeo4j only carries id+name; fetch the full Mongo documents (image, genres,
             // score) for the card UI, since the ids are shared between the two stores
             List<String> ids = games.stream().map(GameNeo4j::getId).toList();
