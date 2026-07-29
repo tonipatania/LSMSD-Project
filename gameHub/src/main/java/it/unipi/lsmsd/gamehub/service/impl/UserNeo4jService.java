@@ -41,6 +41,11 @@ public class UserNeo4jService implements IUserNeo4jService {
 
     // numero di suggerimenti mostrati nella sidebar della Home
     private static final int SUGGESTIONS_LIMIT = 10;
+    private static final int POPULAR_POOL_SIZE = 100;
+    private static final long POPULAR_CACHE_TTL_MS = 10 * 60 * 1000L;
+
+    private volatile List<SuggestedUserDTO> popularUsersCache;
+    private volatile long popularUsersCachedAt;
 
     @Autowired
     private IGameService gameService;
@@ -174,26 +179,47 @@ public class UserNeo4jService implements IUserNeo4jService {
             List<SuggestedUserDTO> suggestions =
                     userNeo4jRepository.findSuggestedFriends(username, SUGGESTIONS_LIMIT);
             if (!suggestions.isEmpty()) {
-                return withReason(suggestions, SuggestedUserDTO.COMMON_FRIENDS);
+                return suggestions;
             }
 
             suggestions = userNeo4jRepository.findUsersWithSimilarTastes(username, SUGGESTIONS_LIMIT);
             if (!suggestions.isEmpty()) {
-                return withReason(suggestions, SuggestedUserDTO.SIMILAR_TASTES);
+                return suggestions;
             }
 
-            return withReason(
-                    userNeo4jRepository.findMostFollowedUsers(username, SUGGESTIONS_LIMIT),
-                    SuggestedUserDTO.POPULAR);
+            return mostFollowedUsersFor(username);
         }catch (Exception e){
             System.out.println(e.getMessage());
             return null;
         }
     }
 
-    private List<SuggestedUserDTO> withReason(List<SuggestedUserDTO> users, String reason) {
-        users.forEach(u -> u.setReason(reason));
-        return users;
+    // La classifica globale costa una scansione di tutte le relazioni FOLLOW (~1,5s sul dataset
+    // completo) ed e' identica per tutti: la si calcola una volta ogni POPULAR_CACHE_TTL_MS e si
+    // personalizza il risultato scartando l'utente stesso e chi gia' segue.
+    private List<SuggestedUserDTO> mostFollowedUsersFor(String username) {
+        Set<String> excluded = userNeo4jRepository.findFollowedUsers(username).stream()
+                .map(UserNeo4j::getUsername)
+                .collect(Collectors.toCollection(HashSet::new));
+        excluded.add(username);
+
+        return cachedMostFollowedUsers().stream()
+                .filter(u -> !excluded.contains(u.getUsername()))
+                .limit(SUGGESTIONS_LIMIT)
+                .toList();
+    }
+
+    private List<SuggestedUserDTO> cachedMostFollowedUsers() {
+        List<SuggestedUserDTO> cached = popularUsersCache;
+        if (cached != null && System.currentTimeMillis() - popularUsersCachedAt < POPULAR_CACHE_TTL_MS) {
+            return cached;
+        }
+        // il pool e' piu ampio del numero di suggerimenti mostrati, cosi resta abbastanza margine
+        // dopo aver scartato gli utenti gia' seguiti
+        List<SuggestedUserDTO> fresh = userNeo4jRepository.findMostFollowedUsers(POPULAR_POOL_SIZE);
+        popularUsersCache = fresh;
+        popularUsersCachedAt = System.currentTimeMillis();
+        return fresh;
     }
 
     @Override
