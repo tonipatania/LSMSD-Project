@@ -49,7 +49,8 @@ public class UserController {
 
 
     @GetMapping("userSelected/wishlist")
-    public ResponseEntity<Object> getUserWishlist(@RequestParam String username, String friendUsername) {
+    public ResponseEntity<Object> getUserWishlist(@RequestParam String username,
+                                                  @RequestParam(required = false) String friendUsername) {
         List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username,friendUsername);
         if (gameList != null) {
             // always a JSON array, even when empty: a plain-text "empty" message here is not
@@ -65,13 +66,16 @@ public class UserController {
     @PostMapping("wishlist/addWishlistGame")
     public ResponseEntity<String> addGameToWishlist(@RequestParam String username,String name) {
         Boolean result=userNeo4jService.addGameToWishlist(username,name);
+        // il service torna null quando la query fallisce: il null va intercettato prima di ogni
+        // uso come boolean, altrimenti l'unboxing solleva NullPointerException e il ramo 500
+        // qui sotto resta irraggiungibile
+        if (result == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
         if (result) {
             return ResponseEntity.ok("game added");
-        }else if(!result){
-            return ResponseEntity.ok("no game added");
         }
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        return ResponseEntity.ok("no game added");
     }
 
 
@@ -79,13 +83,13 @@ public class UserController {
     @PostMapping("wishlist/deleteWishlistGame")
     public ResponseEntity<String> deleteGameToWishlist(@RequestParam String username,String name) {
         Boolean result=userNeo4jService.deleteGameToWishlist(username,name);
+        if (result == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
         if (result) {
             return ResponseEntity.ok("eliminated game");
-        }else if(!result){
-            return ResponseEntity.ok("no eliminated game");
         }
-
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        return ResponseEntity.ok("no eliminated game");
     }
 
 
