@@ -4,6 +4,7 @@ package it.unipi.lsmsd.gamehub.controller;
 
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
+import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
@@ -51,7 +52,7 @@ public class UserController {
     @GetMapping("userSelected/wishlist")
     public ResponseEntity<Object> getUserWishlist(@RequestParam String username,
                                                   @RequestParam(required = false) String friendUsername) {
-        List<GameNeo4j> gameList = userNeo4jService.getUserWishlist(username,friendUsername);
+        List<Game> gameList = userNeo4jService.getUserWishlist(username,friendUsername);
         if (gameList != null) {
             // always a JSON array, even when empty: a plain-text "empty" message here is not
             // valid JSON, and Angular's HttpClient turns an unparseable 200 body into an error
