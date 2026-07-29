@@ -9,6 +9,7 @@ import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -94,12 +95,16 @@ public class LoginService implements ILoginService {
             String username = registrationDTO.getUsername();
             String password = registrationDTO.getPassword();
             String email = registrationDTO.getEmail();
-            //User u=loginRepository.findByUsername(username);
-            User existingUser = loginRepository.findByUsername(username);
 
-            // If the user with the same username exists, return false
-            if (existingUser != null) {
-                return new ResponseEntity<>("username already present, try again with another", HttpStatus.UNAUTHORIZED);
+            // username ed email sono entrambi unici: 409 CONFLICT e' lo stato corretto per una
+            // risorsa gia' esistente (prima si rispondeva 401, che il client interpreta come
+            // "credenziali non valide"). I due casi hanno messaggi distinti perche' il form deve
+            // poter dire all'utente quale dei due campi cambiare.
+            if (loginRepository.existsByUsername(username)) {
+                return new ResponseEntity<>("Username gia' in uso, scegline un altro", HttpStatus.CONFLICT);
+            }
+            if (loginRepository.existsByEmail(email)) {
+                return new ResponseEntity<>("Email gia' registrata, usane un'altra o accedi", HttpStatus.CONFLICT);
             }
 
             // If the user with the same username doesn't exist, you can proceed with registration logic
@@ -117,6 +122,14 @@ public class LoginService implements ILoginService {
 
             // Return true to indicate successful registration
             return new ResponseEntity<>(newUser.getId(), HttpStatus.CREATED);
+        }catch (DuplicateKeyException e){
+            // due signup concorrenti possono superare entrambi i controlli sopra: qui a rifiutare
+            // e' l'indice unico, e il messaggio dipende da quale dei due indici ha fatto scattare
+            // l'errore
+            String message = e.getMessage() != null && e.getMessage().contains("email")
+                    ? "Email gia' registrata, usane un'altra o accedi"
+                    : "Username gia' in uso, scegline un altro";
+            return new ResponseEntity<>(message, HttpStatus.CONFLICT);
         }catch (Exception e){
             return new ResponseEntity<>("Error in interaction with Mongo" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
