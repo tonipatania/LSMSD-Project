@@ -63,6 +63,26 @@ public class UserController {
     }
 
 
+    // variante paginata usata dal profilo di un altro utente, per non caricare in un colpo solo
+    // wishlist che possono contenere decine di giochi
+    @GetMapping("userSelected/wishlist/page")
+    public ResponseEntity<Page<Game>> getUserWishlistPage(@RequestParam String username,
+                                                          @RequestParam(required = false) String friendUsername,
+                                                          @RequestParam(defaultValue = "name") String sort,
+                                                          @RequestParam(defaultValue = "false") boolean onlyCommon,
+                                                          @PageableDefault(size = 12) Pageable pageable) {
+        return ResponseEntity.ok(userNeo4jService.getUserWishlistPage(
+                username, friendUsername, pageable, sort, onlyCommon));
+    }
+
+    // giochi che il visitatore ha in comune con il profilo che sta guardando
+    @GetMapping("userSelected/wishlist/common")
+    public ResponseEntity<List<GameNeo4j>> getCommonWishlistGames(@RequestParam String username,
+                                                                   @RequestParam String friendUsername) {
+        return ResponseEntity.ok(userNeo4jService.getCommonWishlistGames(username, friendUsername));
+    }
+
+
     //cambiato path
     @PostMapping("wishlist/addWishlistGame")
     public ResponseEntity<String> addGameToWishlist(@RequestParam String username,String name) {

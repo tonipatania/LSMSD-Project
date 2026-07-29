@@ -18,6 +18,17 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
    @Query("MATCH (u:UserNeo4j)-[:ADD]->(g:GameNeo4j) WHERE u.username = $username RETURN g.id as id, g.name as name")
    List<GameNeo4j> findByUsername(@Param("username") String username);
 
+    @Query("MATCH (u:UserNeo4j {username: $username})-[:ADD]->(g:GameNeo4j) RETURN count(g)")
+    long countWishlist(@Param("username") String username);
+
+    // giochi presenti in entrambe le wishlist: e' lo stesso criterio con cui la Home calcola
+    // "giochi in comune", cosi la card dei suggerimenti e il profilo raccontano la stessa cosa
+    @Query("MATCH (:UserNeo4j {username: $username})-[:ADD]->(g:GameNeo4j)" +
+           "<-[:ADD]-(:UserNeo4j {username: $friendUsername}) " +
+           "RETURN DISTINCT g.id AS id, g.name AS name ORDER BY g.name")
+    List<GameNeo4j> findCommonWishlistGames(@Param("username") String username,
+                                            @Param("friendUsername") String friendUsername);
+
     // Il gioco va selezionato prima del MERGE: con un nome duplicato il MATCH restituisce piu nodi
     // e il MERGE creerebbe una relazione ADD verso ognuno, mettendo in wishlist giochi che l'utente
     // non ha scelto. Stesso ORDER BY di findGameByName per colpire lo stesso nodo.
