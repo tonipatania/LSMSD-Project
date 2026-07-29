@@ -3,6 +3,7 @@ package it.unipi.lsmsd.gamehub.controller;
 
 
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
+import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
@@ -119,7 +120,7 @@ public class UserController {
 
     @GetMapping("/SuggestFriends")
     public ResponseEntity<Object> getSuggestFriends(@RequestParam String username){
-        List<UserNeo4j> userNeo4jList=userNeo4jService.getSuggestedFriends(username);
+        List<SuggestedUserDTO> userNeo4jList=userNeo4jService.getSuggestedFriends(username);
         if (userNeo4jList != null) {
             return ResponseEntity.ok(userNeo4jList);
         }
