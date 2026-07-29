@@ -1,6 +1,7 @@
 package it.unipi.lsmsd.gamehub.service;
 
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
+import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
@@ -28,7 +29,7 @@ public interface IUserNeo4jService {
 
     List<UserNeo4j> getFriendsOfFriends(String username);
 
-    List<UserNeo4j> getSuggestedFriends(String username);
+    List<SuggestedUserDTO> getSuggestedFriends(String username);
 
     List<UserNeo4j> searchUsers(String query, String currentUsername);
 

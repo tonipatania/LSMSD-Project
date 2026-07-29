@@ -1,5 +1,6 @@
 package it.unipi.lsmsd.gamehub.repository;
 
+import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import org.springframework.data.neo4j.repository.query.Query;
@@ -32,7 +33,7 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
     @Query("MATCH (u:UserNeo4j {username: $username})-[:FOLLOW]->()-[:FOLLOW]->(friends) RETURN DISTINCT friends;")
     List<UserNeo4j> findFriendsOfFriends (@Param("username") String username);
 
-    // Friends of friends not already followed, with at least 5 games in common wishlist.
+    // Livello 1: amici di amici non ancora seguiti, con almeno 5 giochi in comune in wishlist.
     // Computed entirely in a single Cypher query to avoid per-candidate round trips.
     @Query("MATCH (u:UserNeo4j {username: $username})-[:ADD]->(g:GameNeo4j) " +
            "WITH u, collect(g) AS myGames " +
@@ -41,8 +42,28 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
            "MATCH (candidate)-[:ADD]->(cg:GameNeo4j) WHERE cg IN myGames " +
            "WITH candidate, count(DISTINCT cg) AS commonGames " +
            "WHERE commonGames >= 5 " +
-           "RETURN candidate ORDER BY rand() LIMIT 50")
-    List<UserNeo4j> findSuggestedFriends(@Param("username") String username);
+           "RETURN candidate.id AS id, candidate.username AS username, commonGames AS commonGames " +
+           "ORDER BY commonGames DESC LIMIT $limit")
+    List<SuggestedUserDTO> findSuggestedFriends(@Param("username") String username, @Param("limit") int limit);
+
+    // Livello 2: chiunque non ancora seguito condivida giochi in wishlist, anche fuori dalla
+    // rete di follow. Copre il caso di utenti che non seguono ancora nessuno.
+    @Query("MATCH (u:UserNeo4j {username: $username})-[:ADD]->(g:GameNeo4j)<-[:ADD]-(candidate:UserNeo4j) " +
+           "WHERE candidate <> u AND NOT (u)-[:FOLLOW]->(candidate) " +
+           "WITH candidate, count(DISTINCT g) AS commonGames " +
+           "RETURN candidate.id AS id, candidate.username AS username, commonGames AS commonGames " +
+           "ORDER BY commonGames DESC LIMIT $limit")
+    List<SuggestedUserDTO> findUsersWithSimilarTastes(@Param("username") String username, @Param("limit") int limit);
+
+    // Livello 3: utenti piu seguiti della rete, non ancora seguiti. Fallback che non e mai vuoto
+    // finche esiste almeno una relazione FOLLOW nel grafo.
+    @Query("MATCH (me:UserNeo4j {username: $username}) " +
+           "MATCH (candidate:UserNeo4j)<-[:FOLLOW]-() " +
+           "WHERE candidate <> me AND NOT (me)-[:FOLLOW]->(candidate) " +
+           "WITH candidate, count(*) AS followers " +
+           "RETURN candidate.id AS id, candidate.username AS username, followers AS followers " +
+           "ORDER BY followers DESC LIMIT $limit")
+    List<SuggestedUserDTO> findMostFollowedUsers(@Param("username") String username, @Param("limit") int limit);
 
     @Query("MATCH (u:UserNeo4j)-[:FOLLOW]->(following:UserNeo4j) WHERE u.username = $username RETURN following ORDER BY following.username SKIP $skip LIMIT $limit")
     List<UserNeo4j> findFollowedUsersPage(@Param("username") String username, @Param("skip") long skip, @Param("limit") long limit);

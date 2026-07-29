@@ -3,6 +3,7 @@ package it.unipi.lsmsd.gamehub.service.impl;
 
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
+import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.*;
 
 
@@ -37,6 +38,9 @@ public class UserNeo4jService implements IUserNeo4jService {
 
     @Autowired
     private ReviewRepository reviewRepository;
+
+    // numero di suggerimenti mostrati nella sidebar della Home
+    private static final int SUGGESTIONS_LIMIT = 10;
 
     @Autowired
     private IGameService gameService;
@@ -163,15 +167,33 @@ public class UserNeo4jService implements IUserNeo4jService {
 
 
     @Override
-    public List<UserNeo4j> getSuggestedFriends(String username) {
+    public List<SuggestedUserDTO> getSuggestedFriends(String username) {
         try {
-            // Friends of friends not already followed, with >= 5 games in common wishlist,
-            // computed server-side in a single query (see UserNeo4jRepository#findSuggestedFriends).
-            return userNeo4jRepository.findSuggestedFriends(username);
+            // Cascata: si scende di livello solo se il precedente non produce risultati, cosi la
+            // sezione "Persone da seguire" resta personalizzata quando possibile e non e mai vuota.
+            List<SuggestedUserDTO> suggestions =
+                    userNeo4jRepository.findSuggestedFriends(username, SUGGESTIONS_LIMIT);
+            if (!suggestions.isEmpty()) {
+                return withReason(suggestions, SuggestedUserDTO.COMMON_FRIENDS);
+            }
+
+            suggestions = userNeo4jRepository.findUsersWithSimilarTastes(username, SUGGESTIONS_LIMIT);
+            if (!suggestions.isEmpty()) {
+                return withReason(suggestions, SuggestedUserDTO.SIMILAR_TASTES);
+            }
+
+            return withReason(
+                    userNeo4jRepository.findMostFollowedUsers(username, SUGGESTIONS_LIMIT),
+                    SuggestedUserDTO.POPULAR);
         }catch (Exception e){
             System.out.println(e.getMessage());
             return null;
         }
+    }
+
+    private List<SuggestedUserDTO> withReason(List<SuggestedUserDTO> users, String reason) {
+        users.forEach(u -> u.setReason(reason));
+        return users;
     }
 
     @Override
