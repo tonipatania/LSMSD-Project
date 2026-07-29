@@ -2,6 +2,7 @@ package it.unipi.lsmsd.gamehub.service;
 
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
+import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
@@ -17,7 +18,9 @@ public interface IUserNeo4jService {
 
 
     //DA MODIFICARE NEL MAIN->TROVA LA LISTA DI GIOCHI DEGLI AMICI
-    public List<GameNeo4j> getUserWishlist(String username,String friendUsername);
+    // restituisce i documenti Mongo completi, non i soli id+nome del grafo, cosi la UI puo'
+    // mostrare copertina, generi e voto
+    public List<Game> getUserWishlist(String username,String friendUsername);
 
     public Boolean addGameToWishlist(String username,String name);
 

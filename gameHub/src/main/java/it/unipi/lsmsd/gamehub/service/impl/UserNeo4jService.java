@@ -68,20 +68,20 @@ public class UserNeo4jService implements IUserNeo4jService {
 
 
     @Override
-    public List<GameNeo4j> getUserWishlist(String username,String friendUsername) {
+    public List<Game> getUserWishlist(String username,String friendUsername) {
         try {
             // friendUsername assente = "voglio la mia wishlist". La pagina Wishlist non manda il
             // parametro, quindi arrivava null: il confronto falliva, si finiva nel ramo "wishlist
             // di un amico" e l'utente vedeva sempre una lista vuota della propria wishlist.
             if (friendUsername == null || friendUsername.isBlank() || username.equals(friendUsername)){
-                return userNeo4jRepository.findByUsername(username);
+                return enrichFromMongo(userNeo4jRepository.findByUsername(username));
 
             }
             List<UserNeo4j> userNeo4jList=userNeo4jRepository.findFollowedUsers(username);
             for (UserNeo4j userNeo4j : userNeo4jList) {
                 if (userNeo4j.getUsername().equals(friendUsername)) {
                     // User with the desired username is present in the list
-                    return userNeo4jRepository.findByUsername(friendUsername);
+                    return enrichFromMongo(userNeo4jRepository.findByUsername(friendUsername));
                 }
             }
 
@@ -90,6 +90,42 @@ public class UserNeo4jService implements IUserNeo4jService {
             System.out.println(e.getMessage());
             return null;
         }
+    }
+
+    // Il grafo tiene solo id+nome: la wishlist e' quindi renderizzabile solo come lista di nomi.
+    // Qui si recuperano i documenti Mongo (copertina, generi, voto, prezzo) con una sola query,
+    // sfruttando il fatto che i due store condividono gli id.
+    private List<Game> enrichFromMongo(List<GameNeo4j> graphGames) {
+        if (graphGames == null || graphGames.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> ids = graphGames.stream()
+                .map(GameNeo4j::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        Map<String, Game> byId = new HashMap<>();
+        for (Game game : gameRepository.findAllById(ids)) {
+            // le recensioni embedded non servono a una card di wishlist e pesano molto sul payload
+            game.setReviews(null);
+            byId.put(game.getId(), game);
+        }
+
+        List<Game> enriched = new ArrayList<>(graphGames.size());
+        for (GameNeo4j graphGame : graphGames) {
+            Game full = graphGame.getId() == null ? null : byId.get(graphGame.getId());
+            if (full != null) {
+                enriched.add(full);
+            } else {
+                // documento Mongo mancante: si mostra comunque id+nome, perche' un gioco aggiunto
+                // dall'utente non deve sparire silenziosamente dalla sua wishlist
+                Game placeholder = new Game();
+                placeholder.setId(graphGame.getId());
+                placeholder.setName(graphGame.getName());
+                enriched.add(placeholder);
+            }
+        }
+        return enriched;
     }
 
 
