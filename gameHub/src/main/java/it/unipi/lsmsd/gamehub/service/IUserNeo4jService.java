@@ -22,6 +22,11 @@ public interface IUserNeo4jService {
     // mostrare copertina, generi e voto
     public List<Game> getUserWishlist(String username,String friendUsername);
 
+    Page<Game> getUserWishlistPage(String username, String friendUsername, Pageable pageable,
+                                   String sort, boolean onlyCommon);
+
+    List<GameNeo4j> getCommonWishlistGames(String username, String friendUsername);
+
     public Boolean addGameToWishlist(String username,String name);
 
     public Boolean deleteGameToWishlist(String username,String name);

@@ -20,6 +20,9 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -43,6 +46,10 @@ public class UserNeo4jService implements IUserNeo4jService {
     private static final int SUGGESTIONS_LIMIT = 10;
     private static final int POPULAR_POOL_SIZE = 100;
     private static final long POPULAR_CACHE_TTL_MS = 10 * 60 * 1000L;
+
+    // le date del dump sono nel formato inglese "Oct 21, 2008"
+    private static final DateTimeFormatter RELEASE_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
 
     private volatile List<SuggestedUserDTO> popularUsersCache;
     private volatile long popularUsersCachedAt;
@@ -80,14 +87,95 @@ public class UserNeo4jService implements IUserNeo4jService {
             // profilo raggiunto da li: la card prometteva giochi in comune e il profilo diceva
             // "nessun gioco". La sezione del profilo si chiama "Wishlist pubblica", quindi la
             // lettura pubblica e' il comportamento coerente.
-            String target = (friendUsername == null || friendUsername.isBlank())
-                    ? username
-                    : friendUsername;
-            return enrichFromMongo(userNeo4jRepository.findByUsername(target));
+            return enrichFromMongo(userNeo4jRepository.findByUsername(
+                    resolveWishlistOwner(username, friendUsername)));
         }catch (Exception e){
             System.out.println(e.getMessage());
             return null;
         }
+    }
+
+    @Override
+    public Page<Game> getUserWishlistPage(String username, String friendUsername,
+                                          Pageable pageable, String sort, boolean onlyCommon) {
+        try {
+            String owner = resolveWishlistOwner(username, friendUsername);
+            // L'ordinamento non puo' essere delegato al database: l'appartenenza alla wishlist sta
+            // su Neo4j mentre prezzo e data di uscita stanno su Mongo, e releaseDate e' per giunta
+            // una stringa ("Oct 21, 2008"), quindi ordinarla su Mongo darebbe un ordine
+            // alfabetico, non cronologico. Si ordina quindi in memoria sull'intera wishlist prima
+            // di ritagliare la pagina: ordinare solo la pagina corrente darebbe un ordine
+            // globalmente sbagliato. Il costo e' accettabile perche' le wishlist sono piccole
+            // (max 39 giochi sul dataset attuale).
+            List<Game> all = enrichFromMongo(userNeo4jRepository.findByUsername(owner));
+
+            if (onlyCommon && !owner.equals(username)) {
+                // il filtro va applicato prima di ordinare e paginare, altrimenti totalElements e
+                // il numero di pagine descriverebbero la wishlist intera invece del sottoinsieme
+                // mostrato. Il confronto e' sull'id e non sul nome: 596 titoli condividono il nome
+                // con un altro gioco, quindi filtrare per nome includerebbe giochi sbagliati.
+                Set<String> commonIds = userNeo4jRepository
+                        .findCommonWishlistGames(username, owner).stream()
+                        .map(GameNeo4j::getId)
+                        .collect(Collectors.toSet());
+                all = all.stream()
+                        .filter(g -> commonIds.contains(g.getId()))
+                        .collect(Collectors.toCollection(ArrayList::new));
+            }
+
+            all.sort(wishlistComparator(sort));
+
+            int from = (int) Math.min(pageable.getOffset(), all.size());
+            int to = Math.min(from + pageable.getPageSize(), all.size());
+            return new PageImpl<>(new ArrayList<>(all.subList(from, to)), pageable, all.size());
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return Page.empty(pageable);
+        }
+    }
+
+    private Comparator<Game> wishlistComparator(String sort) {
+        Comparator<Game> byName = Comparator.comparing(
+                g -> g.getName() == null ? "" : g.getName(), String.CASE_INSENSITIVE_ORDER);
+        if ("price".equalsIgnoreCase(sort)) {
+            return Comparator.comparingDouble(Game::getPrice).thenComparing(byName);
+        }
+        if ("release".equalsIgnoreCase(sort)) {
+            // piu recenti prima; le date illeggibili finiscono in fondo invece di rompere l'ordine
+            return Comparator.comparingLong(this::releaseEpochDay).reversed().thenComparing(byName);
+        }
+        return byName;
+    }
+
+    private long releaseEpochDay(Game game) {
+        if (game.getReleaseDate() == null || game.getReleaseDate().isBlank()) {
+            return Long.MIN_VALUE;
+        }
+        try {
+            return LocalDate.parse(game.getReleaseDate(), RELEASE_DATE_FORMAT).toEpochDay();
+        } catch (DateTimeParseException e) {
+            return Long.MIN_VALUE;
+        }
+    }
+
+    @Override
+    public List<GameNeo4j> getCommonWishlistGames(String username, String friendUsername) {
+        try {
+            if (friendUsername == null || friendUsername.isBlank()
+                    || username.equals(friendUsername)) {
+                // con se stessi "in comune" non significa nulla
+                return Collections.emptyList();
+            }
+            return userNeo4jRepository.findCommonWishlistGames(username, friendUsername);
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    // friendUsername assente o uguale al chiamante = la propria wishlist
+    private String resolveWishlistOwner(String username, String friendUsername) {
+        return (friendUsername == null || friendUsername.isBlank()) ? username : friendUsername;
     }
 
     // Il grafo tiene solo id+nome: la wishlist e' quindi renderizzabile solo come lista di nomi.
