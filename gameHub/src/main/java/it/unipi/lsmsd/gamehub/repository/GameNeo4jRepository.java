@@ -10,7 +10,11 @@ import java.util.List;
 @Repository
 public interface GameNeo4jRepository extends Neo4jRepository<GameNeo4j, String> {
 
-    @Query("MATCH (g:GameNeo4j) WHERE g.name = $name RETURN g ")
+    // 596 nomi di gioco sono duplicati nel grafo (titoli distinti che condividono il nome): senza
+    // LIMIT 1 il metodo, che restituisce una singola entita', fa fallire la query con
+    // "Expected a result with a single record". ORDER BY g.id rende la scelta deterministica e
+    // uguale a quella di addGameToUser, cosi il controllo di esistenza e la scrittura concordano.
+    @Query("MATCH (g:GameNeo4j) WHERE g.name = $name RETURN g ORDER BY g.id LIMIT 1")
     GameNeo4j findGameByName(@Param("name") String name);
    //@Query("MATCH (g:GameNeo4j)<-[:ADD]-(u:UserNeo4j) RETURN g.id as id, g.name as name, g.developers as developers, g.categories as categories, g.genres as genres, count(u) as numberOfLinks ORDER BY numberOfLinks DESC LIMIT 10")
    @Query("MATCH (g:GameNeo4j)<-[:ADD]-(u:UserNeo4j) WHERE g.name = $name RETURN count(u) as numberOfLinks")

@@ -70,7 +70,10 @@ public class UserNeo4jService implements IUserNeo4jService {
     @Override
     public List<GameNeo4j> getUserWishlist(String username,String friendUsername) {
         try {
-            if (username.equals(friendUsername)){
+            // friendUsername assente = "voglio la mia wishlist". La pagina Wishlist non manda il
+            // parametro, quindi arrivava null: il confronto falliva, si finiva nel ramo "wishlist
+            // di un amico" e l'utente vedeva sempre una lista vuota della propria wishlist.
+            if (friendUsername == null || friendUsername.isBlank() || username.equals(friendUsername)){
                 return userNeo4jRepository.findByUsername(username);
 
             }

@@ -18,7 +18,11 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
    @Query("MATCH (u:UserNeo4j)-[:ADD]->(g:GameNeo4j) WHERE u.username = $username RETURN g.id as id, g.name as name")
    List<GameNeo4j> findByUsername(@Param("username") String username);
 
-    @Query("MATCH (u:UserNeo4j {username: $username}), (g:GameNeo4j {name: $name}) MERGE (u)-[:ADD]->(g)")
+    // Il gioco va selezionato prima del MERGE: con un nome duplicato il MATCH restituisce piu nodi
+    // e il MERGE creerebbe una relazione ADD verso ognuno, mettendo in wishlist giochi che l'utente
+    // non ha scelto. Stesso ORDER BY di findGameByName per colpire lo stesso nodo.
+    @Query("MATCH (g:GameNeo4j {name: $name}) WITH g ORDER BY g.id LIMIT 1 " +
+           "MATCH (u:UserNeo4j {username: $username}) MERGE (u)-[:ADD]->(g)")
     void addGameToUser(@Param("username") String username, @Param("name") String name);
 
     @Query("MATCH (u:UserNeo4j {username: $username})-[r:ADD]->(g:GameNeo4j {name: $name}) DELETE r")
