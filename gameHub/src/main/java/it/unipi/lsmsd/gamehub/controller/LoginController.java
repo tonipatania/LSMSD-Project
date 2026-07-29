@@ -56,8 +56,12 @@ public class LoginController {
         ResponseEntity<String> response = userNeo4jService.addUser(responseEntity.getBody(), registrationDTO.getUsername());
         if(response.getStatusCode() == HttpStatus.CREATED)
             return response;
-        // neo4j ha fallito la creazione -> rimuovere utente in mongo
-        return loginService.removeUser(responseEntity.getBody());
+        // neo4j ha fallito la creazione -> rimuovere utente in mongo. La rimozione riesce anche
+        // quando la registrazione e' fallita, quindi non se ne puo' restituire lo stato: prima si
+        // rispondeva 200 OK e il frontend festeggiava un account mai creato.
+        loginService.removeUser(responseEntity.getBody());
+        return new ResponseEntity<>("Registrazione non riuscita, riprova piu tardi",
+                HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 
