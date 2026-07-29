@@ -73,19 +73,17 @@ public class UserNeo4jService implements IUserNeo4jService {
             // friendUsername assente = "voglio la mia wishlist". La pagina Wishlist non manda il
             // parametro, quindi arrivava null: il confronto falliva, si finiva nel ramo "wishlist
             // di un amico" e l'utente vedeva sempre una lista vuota della propria wishlist.
-            if (friendUsername == null || friendUsername.isBlank() || username.equals(friendUsername)){
-                return enrichFromMongo(userNeo4jRepository.findByUsername(username));
-
-            }
-            List<UserNeo4j> userNeo4jList=userNeo4jRepository.findFollowedUsers(username);
-            for (UserNeo4j userNeo4j : userNeo4jList) {
-                if (userNeo4j.getUsername().equals(friendUsername)) {
-                    // User with the desired username is present in the list
-                    return enrichFromMongo(userNeo4jRepository.findByUsername(friendUsername));
-                }
-            }
-
-            return Collections.emptyList();
+            //
+            // La wishlist di un altro utente non e' piu' filtrata sui soli utenti seguiti. I
+            // suggerimenti della Home mostrano di proposito persone NON ancora seguite ("10 giochi
+            // in comune"), quindi il filtro rendeva sistematicamente vuota la wishlist di ogni
+            // profilo raggiunto da li: la card prometteva giochi in comune e il profilo diceva
+            // "nessun gioco". La sezione del profilo si chiama "Wishlist pubblica", quindi la
+            // lettura pubblica e' il comportamento coerente.
+            String target = (friendUsername == null || friendUsername.isBlank())
+                    ? username
+                    : friendUsername;
+            return enrichFromMongo(userNeo4jRepository.findByUsername(target));
         }catch (Exception e){
             System.out.println(e.getMessage());
             return null;
