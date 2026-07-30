@@ -1,23 +1,19 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
-import it.unipi.lsmsd.gamehub.model.Game;
-import it.unipi.lsmsd.gamehub.model.GameNeo4j;
-import it.unipi.lsmsd.gamehub.model.Review;
+import lombok.extern.slf4j.Slf4j;
+
 import it.unipi.lsmsd.gamehub.model.ReviewNeo4j;
 import it.unipi.lsmsd.gamehub.repository.ReviewNeo4jRepository;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.service.IReviewNeo4jService;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 
 @Service
+@Slf4j
 public class ReviewNeo4jService implements IReviewNeo4jService {
 
     @Autowired
@@ -39,7 +35,7 @@ public class ReviewNeo4jService implements IReviewNeo4jService {
         try {
             return reviewNeo4jRepository.findReviewIngoingLinks(id);
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in getReviewsIngoingLinks", e);
             return null;
         }
     }
@@ -50,6 +46,7 @@ public class ReviewNeo4jService implements IReviewNeo4jService {
             return new ResponseEntity<>("corrected created review", HttpStatus.CREATED);
         }
         catch (Exception e) {
+            log.error("Errore in createReview", e);
             return new ResponseEntity<>("error saving in neo4j: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -60,6 +57,7 @@ public class ReviewNeo4jService implements IReviewNeo4jService {
             return new ResponseEntity<>("remove correct", HttpStatus.OK);
         }
         catch (Exception e) {
+            log.error("Errore in removeReview", e);
             return new ResponseEntity<>("error in deleting review: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

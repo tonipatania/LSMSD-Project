@@ -1,23 +1,14 @@
 package it.unipi.lsmsd.gamehub.repository.MongoDBAggregation;
 
-import it.unipi.lsmsd.gamehub.DTO.GameDTO;
-import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTOAggregation;
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTOAggregation2;
-import it.unipi.lsmsd.gamehub.model.Review;
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.stereotype.Repository;
-import org.bson.Document;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 

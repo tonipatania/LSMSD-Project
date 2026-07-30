@@ -1,5 +1,7 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
+
 
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@Slf4j
 public class GameNeo4jService implements IGameNeo4jService {
     @Autowired
     private GameNeo4jRepository gameNeo4jRepository;
@@ -25,7 +28,7 @@ public class GameNeo4jService implements IGameNeo4jService {
         try {
             return gameNeo4jRepository.findGameIngoingLinks(name);
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in getGamesIngoingLinks", e);
             return null;
         }
     }
@@ -50,7 +53,7 @@ public class GameNeo4jService implements IGameNeo4jService {
             List<Game> enrichedGames = gameRepository.findAllById(ids);
             return new ResponseEntity<>(enrichedGames, HttpStatus.OK);
         } catch (Exception e) {
-            System.out.println("Errore durante l accesso al database: " + e.getMessage());
+            log.error("Errore durante l accesso al database", e);
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -60,6 +63,7 @@ public class GameNeo4jService implements IGameNeo4jService {
             return new ResponseEntity<>("game deleted", HttpStatus.OK);
         }
         catch (Exception e) {
+            log.error("Errore in removeGame", e);
             return new ResponseEntity<>("deletion error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -69,6 +73,7 @@ public class GameNeo4jService implements IGameNeo4jService {
             return new ResponseEntity<>("game inserted correctly", HttpStatus.CREATED);
         }
         catch (Exception e) {
+            log.error("Errore in addGame", e);
             return new ResponseEntity<>("error inserted game in neo4j: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

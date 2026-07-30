@@ -1,5 +1,7 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
+
 import com.mongodb.MongoException;
 import it.unipi.lsmsd.gamehub.DTO.LoginDTO;
 import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
@@ -10,7 +12,6 @@ import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +21,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class LoginService implements ILoginService {
     @Autowired
     private LoginRepository loginRepository;
@@ -45,7 +47,7 @@ public class LoginService implements ILoginService {
             return new AuthResponse(true, "Login Successful", u.getUsername(), token, u.getRole());
         }
         catch (MongoException e) {
-            System.out.println("Errore durante il recupero dell'utente da MongoDB: " + e.getMessage());
+            log.error("Errore durante il recupero dell'utente da MongoDB", e);
             return new AuthResponse(false, "Error occurred while authenticating", null);
         }
     }
@@ -82,7 +84,7 @@ public class LoginService implements ILoginService {
             return ResponseEntity.ok(role);
         }
         catch (MongoException e) {
-            System.out.println("Errore durante il recupero dell'utente da MongoDB: " + e.getMessage());
+            log.error("Errore durante il recupero dell'utente da MongoDB", e);
             return new ResponseEntity<>("Errore durante il recupero del ruolo dell'utente", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -129,8 +131,10 @@ public class LoginService implements ILoginService {
             String message = e.getMessage() != null && e.getMessage().contains("email")
                     ? "Email gia' registrata, usane un'altra o accedi"
                     : "Username gia' in uso, scegline un altro";
+            log.warn("Registrazione concorrente rifiutata da indice unico Mongo", e);
             return new ResponseEntity<>(message, HttpStatus.CONFLICT);
         }catch (Exception e){
+            log.error("Errore in registrate", e);
             return new ResponseEntity<>("Error in interaction with Mongo" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -140,6 +144,7 @@ public class LoginService implements ILoginService {
             return new ResponseEntity<>("try the registration again later", HttpStatus.OK);
         }
         catch (Exception e) {
+            log.error("Errore in removeUser", e);
             return new ResponseEntity<>("error with Mongo" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -157,6 +162,7 @@ public class LoginService implements ILoginService {
             u = loginRepository.save(u);
             return new ResponseEntity<>("username updated in mongo", HttpStatus.OK);
         } catch (Exception e) {
+            log.error("Errore in updateUser", e);
             return new ResponseEntity<>("error in updating username in mongo: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

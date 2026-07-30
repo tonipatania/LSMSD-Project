@@ -2,14 +2,13 @@ package it.unipi.lsmsd.gamehub.controller;
 
 
 
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
-import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +22,7 @@ import java.util.List;
 
 @RequestMapping("user")
 @RestController
+@Slf4j
 public class UserController {
     @Autowired
     private IUserNeo4jService userNeo4jService;
@@ -217,6 +217,7 @@ public class UserController {
            return response;
        }
        // se fallisce riporto l username allo stato iniziale
+       log.error("Aggiornamento username fallito in Neo4j per {} -> {}, rollback su Mongo", username, newUsername);
        responseEntity = iLoginService.updateUser(newUsername, username);
        return ResponseEntity.status(responseEntity.getStatusCode()).body("username update failed, please try again later");
     }

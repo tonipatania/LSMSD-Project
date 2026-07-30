@@ -2,8 +2,6 @@ package it.unipi.lsmsd.gamehub.service;
 
 import it.unipi.lsmsd.gamehub.DTO.*;
 import it.unipi.lsmsd.gamehub.model.Review;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;

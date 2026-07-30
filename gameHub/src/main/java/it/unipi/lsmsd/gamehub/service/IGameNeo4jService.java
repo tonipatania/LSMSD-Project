@@ -1,7 +1,6 @@
 package it.unipi.lsmsd.gamehub.service;
 
 
-import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import org.springframework.http.ResponseEntity;
 
