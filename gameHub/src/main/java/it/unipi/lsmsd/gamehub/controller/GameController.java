@@ -3,17 +3,14 @@ package it.unipi.lsmsd.gamehub.controller;
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
 import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation2;
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
-import it.unipi.lsmsd.gamehub.model.Review;
-import it.unipi.lsmsd.gamehub.service.IGameNeo4jService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +20,7 @@ import java.util.List;
 
 @RequestMapping("game")
 @RestController
+@Slf4j
 public class GameController {
     @Autowired
     private IGameService gameService;
@@ -121,6 +119,7 @@ public class GameController {
         // check if the admin perform the operation
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
         if(responseEntity.getStatusCode() != HttpStatus.OK) {
+            log.warn("Utente {} senza permessi ha tentato di creare il gioco {}", userId, gameDTO.getName());
             return responseEntity;
         }
         // add game in mongo
@@ -129,9 +128,13 @@ public class GameController {
             return responseEntity;
         // add game in neo4j
         ResponseEntity<String> response = gameNeo4jService.addGame(responseEntity.getBody(), gameDTO.getName());
-        if(response.getStatusCode() == HttpStatus.CREATED)
+        if(response.getStatusCode() == HttpStatus.CREATED) {
+            log.info("Utente {} ha creato il gioco {}", userId, gameDTO.getName());
             return response;
+        }
         // delete game in mongo if is not created in neo4j
+        log.error("Creazione del gioco {} fallita in Neo4j, rollback del documento Mongo {}",
+                gameDTO.getName(), responseEntity.getBody());
         return gameService.deleteGame(responseEntity.getBody());
     }
 
@@ -141,6 +144,7 @@ public class GameController {
         // check if the admin perform the operation
         ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
         if(responseEntity.getStatusCode() != HttpStatus.OK) {
+            log.warn("Utente {} senza permessi ha tentato di eliminare il gioco {}", userId, gameId);
             return responseEntity;
         }
         // delete in mongo
@@ -149,6 +153,7 @@ public class GameController {
             return responseEntity;
         }
         // delete in neo4j
+        log.info("Utente {} ha eliminato il gioco {}", userId, gameId);
         return gameNeo4jService.removeGame(gameId);
     }
 

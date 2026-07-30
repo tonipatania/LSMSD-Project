@@ -1,5 +1,7 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
+
 import it.unipi.lsmsd.gamehub.DTO.*;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
@@ -10,11 +12,8 @@ import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.GroupOperation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -23,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class ReviewService implements IReviewService {
 
     @Autowired
@@ -42,7 +42,7 @@ public class ReviewService implements IReviewService {
         try {
             return reviewRepository.findByTitle(reviewDTO.getTitle());
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in retrieveReviewByTitle", e);
             return null;
         }
     }
@@ -56,7 +56,7 @@ public class ReviewService implements IReviewService {
             }
             return null;
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in retrieveAggregateFirstAndLastUserLike", e);
             return null;
         }
 
@@ -67,7 +67,7 @@ public class ReviewService implements IReviewService {
         try {
             return reviewRepository.findAggregation3();
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in findAggregation3", e);
             return null;
         }
 
@@ -101,7 +101,7 @@ public class ReviewService implements IReviewService {
             }
             return null;
         }catch (Exception e) {
-            System.out.println("Errore nella creazione del gioco: " + e.getMessage());
+            log.error("Errore nella creazione del gioco", e);
             return null;
         }
     }
@@ -123,6 +123,7 @@ public class ReviewService implements IReviewService {
 
             return new ResponseEntity<>("review deleted", HttpStatus.OK);
         }catch (Exception e) {
+            log.error("Errore in deleteReview", e);
             return new ResponseEntity<>("Error in deleting the review: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

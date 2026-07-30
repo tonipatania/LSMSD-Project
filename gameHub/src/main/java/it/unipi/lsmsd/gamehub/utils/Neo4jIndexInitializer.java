@@ -1,5 +1,7 @@
 package it.unipi.lsmsd.gamehub.utils;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.data.neo4j.core.Neo4jClient;
@@ -8,6 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
+@Slf4j
 public class Neo4jIndexInitializer implements ApplicationRunner {
 
     // Il vincolo di unicita' su username porta con se' il proprio indice, quindi copre anche le
@@ -49,7 +52,7 @@ public class Neo4jIndexInitializer implements ApplicationRunner {
             return true;
         } catch (Exception e) {
             // uno schema incompleto degrada le prestazioni ma non deve impedire l'avvio
-            System.out.println("Statement di schema Neo4j non riuscito (" + statement + "): " + e.getMessage());
+            log.error("Statement di schema Neo4j non riuscito (", e);
             return false;
         }
     }

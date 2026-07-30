@@ -1,9 +1,10 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
+
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
 import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation2;
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 @Service
+@Slf4j
 public class GameService implements IGameService {
 
     @Autowired
@@ -39,7 +41,7 @@ public class GameService implements IGameService {
             }
             return gameRepository.searchGames(name, genres, avgScore, pageable);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("Errore in retrieveGamesByParameters", e);
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
     }
@@ -49,7 +51,7 @@ public class GameService implements IGameService {
         try {
             return gameRepository.findDistinctGenres();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("Errore in findDistinctGenres", e);
             return null;
         }
     }
@@ -60,7 +62,7 @@ public class GameService implements IGameService {
             List<GameDTOAggregation> gameList = gameRepository.findAggregation();
             return gameList;
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("Errore in retrieveAggregateGamesByGenresAndSortByScore", e);
             return null;
         }
     }
@@ -71,7 +73,7 @@ public class GameService implements IGameService {
             List<GameDTOAggregation2> gameList = gameRepository.findAggregation4();
             return gameList;
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("Errore in findAggregation4", e);
             return null;
         }
     }
@@ -81,7 +83,7 @@ public class GameService implements IGameService {
         try {
             return gameRepository.findGamesWithReviews(PageRequest.of(0, limit));
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("Errore in getGamesWithReviews", e);
             return Collections.emptyList();
         }
     }
@@ -94,59 +96,10 @@ public class GameService implements IGameService {
 //            return games.map(game -> modelMapper.map(game, GameDTO.class));
             return games;
         } catch (Exception e) {
-            System.out.println("Errore durante il recupero dei giochi: " + e.getMessage());
+            log.error("Errore durante il recupero dei giochi", e);
             return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
     }
-
-    /*@Override
-    public List<Review> updateGameReview(ReviewDTO reviewDTO, int limit) {
-        try {
-
-            Pageable pageable = PageRequest.of(0, limit);
-
-            List<Review> top20Reviews = reviewRepository.findByTitleOrderByLikeCountDesc(reviewDTO.getTitle(), pageable);
-            System.out.println("stampo top 20 review\n");
-            for (int i = 0; i < top20Reviews.size(); i++) {
-                System.out.println(top20Reviews.get(i).getComment());
-            }
-
-            // Find the corresponding game document
-            List<Game> gameList = gameRepository.findByName(reviewDTO.getTitle());
-            //System.out.println("stampo nome gioco: " + gameList.get(0).getName());
-
-            if (!gameList.isEmpty()) {
-                Game game = gameList.get(0);
-
-                List<Review> existingReviews = game.getReviews();
-                System.out.println("stampo review esisitenti gioco: " + existingReviews);
-
-                // Initialize existingReviews if it is null
-                if (existingReviews == null) {
-                    existingReviews = new ArrayList<>();
-                } else {
-                    existingReviews.clear();  // Clear existing reviews if any
-                }
-
-                // Add the new top 20 reviews to the existing reviews
-                existingReviews.addAll(top20Reviews);
-                System.out.println("stampo review esisitenti gioco dopo averle aggiornate: " + existingReviews);
-
-
-                // Set the updated reviews list in the game document
-                game.setReviews(existingReviews);
-
-                // Save the updated game document
-                gameRepository.save(game);
-                return existingReviews;
-            } else {
-                return Collections.emptyList();
-            }
-        } catch (Exception e) {
-            System.out.println(e.getMessage());
-            return null;
-        }
-    }*/
 
     @Override
     public List<Review> updateGameReviewFromScratch(Game game, int limit) {
@@ -174,7 +127,7 @@ public class GameService implements IGameService {
 
 
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("Errore in updateGameReviewFromScratch", e);
             return null;
         }
     }
@@ -206,7 +159,7 @@ public class GameService implements IGameService {
             GameDTO gameInserted = modelMapper.map(saved, GameDTO.class);
             return new ResponseEntity<>(gameInserted.getId(), HttpStatus.CREATED);
         } catch (Exception e) {
-            System.out.println("Error in game creation: " + e.getMessage());
+            log.error("Error in game creation", e);
             return new ResponseEntity<>("Error in game creation: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -218,7 +171,7 @@ public class GameService implements IGameService {
         try {
             return gameRepository.count();
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("Errore in countGameDocument", e);
             return -1;
         }
     }
@@ -234,6 +187,7 @@ public class GameService implements IGameService {
             gameRepository.deleteById(id);
             return new ResponseEntity<>("game deleted", HttpStatus.OK);
         } catch (Exception e) {
+            log.error("Errore in deleteGame", e);
             return new ResponseEntity<>("deletion error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
 
         }

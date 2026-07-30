@@ -1,8 +1,8 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
+import lombok.extern.slf4j.Slf4j;
 
-import it.unipi.lsmsd.gamehub.DTO.GameDTO;
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
+
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.*;
 
@@ -16,7 +16,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -29,6 +28,7 @@ import java.util.stream.Collectors;
 import static java.util.Arrays.stream;
 
 @Service
+@Slf4j
 public class UserNeo4jService implements IUserNeo4jService {
     @Autowired
     private UserNeo4jRepository userNeo4jRepository;
@@ -90,7 +90,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             return enrichFromMongo(userNeo4jRepository.findByUsername(
                     resolveWishlistOwner(username, friendUsername)));
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in getUserWishlist", e);
             return null;
         }
     }
@@ -129,7 +129,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             int to = Math.min(from + pageable.getPageSize(), all.size());
             return new PageImpl<>(new ArrayList<>(all.subList(from, to)), pageable, all.size());
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in getUserWishlistPage", e);
             return Page.empty(pageable);
         }
     }
@@ -168,7 +168,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             }
             return userNeo4jRepository.findCommonWishlistGames(username, friendUsername);
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in getCommonWishlistGames", e);
             return Collections.emptyList();
         }
     }
@@ -229,7 +229,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             return false;
 
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in addGameToWishlist", e);
             return null;
         }
     }
@@ -249,7 +249,7 @@ public class UserNeo4jService implements IUserNeo4jService {
 
             return false;
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in deleteGameToWishlist", e);
             return null;
         }
     }
@@ -260,7 +260,7 @@ public class UserNeo4jService implements IUserNeo4jService {
         try {
             return userNeo4jRepository.findFollowedUsers(username);
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in getFollowedUser", e);
             return null;
         }
     }
@@ -273,7 +273,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             long total = userNeo4jRepository.countFollowedUsers(username);
             return new PageImpl<>(content, pageable, total);
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in getFollowedUserPage", e);
             return Page.empty(pageable);
         }
     }
@@ -283,7 +283,7 @@ public class UserNeo4jService implements IUserNeo4jService {
         try {
             return userNeo4jRepository.findFriendsOfFriends(username);
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in getFriendsOfFriends", e);
             return null;
         }
     }
@@ -314,7 +314,7 @@ public class UserNeo4jService implements IUserNeo4jService {
 
             return mostFollowedUsersFor(username);
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in getSuggestedFriends", e);
             return null;
         }
     }
@@ -352,7 +352,7 @@ public class UserNeo4jService implements IUserNeo4jService {
         try {
             return userNeo4jRepository.searchUsers(query, currentUsername);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.error("Errore in searchUsers", e);
             return null;
         }
     }
@@ -364,7 +364,6 @@ public class UserNeo4jService implements IUserNeo4jService {
     public Boolean addLikeToReview(String username, String id) {
         try {
             Boolean likePresent=userNeo4jRepository.addLikeToReview(username,id);
-            //System.out.println(likePresent);
             if(likePresent != null && !likePresent.booleanValue()){
                 //se il like non è presente si aggiunge anche su mongoDB
                 Optional<Review> optionalReview=reviewRepository.findById(id);
@@ -416,13 +415,13 @@ public class UserNeo4jService implements IUserNeo4jService {
                         if(fuondEqualReview){
                             //5) if yes, run the function that act only inside the embedded review(DEFINE THIS FUNCTION)
                             gameService.updateGameEmbeddedReview(game.get(0));
-                            System.out.println("update embedded reviews");
+                            log.debug("update embedded reviews");
 
                         }else if(!fuondEqualReview){
                             //6) if not we update from scratch considering all the reviews of that game
 
                             gameService.updateGameReviewFromScratch(game.get(0),20);
-                            System.out.println("update reviews from scratch");
+                            log.debug("update reviews from scratch");
                         }
                     }
 
@@ -442,7 +441,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             }
             return false;
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in addLikeToReview", e);
             return null;
 
         }
@@ -457,7 +456,7 @@ public class UserNeo4jService implements IUserNeo4jService {
         try {
             return loginRepository.count();
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in countUserDocument", e);
             return -1;
         }
     }
@@ -475,7 +474,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             return false;
 
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in followUser", e);
             return null;
         }
     }
@@ -492,7 +491,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             return false;
 
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in unfollowUser", e);
             return null;
         }
     }
@@ -506,6 +505,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             return new ResponseEntity<>("successfully registered user", HttpStatus.CREATED);
         }
         catch (Exception e) {
+            log.error("Errore in addUser", e);
             return new ResponseEntity<>("Error in interaction with Neo4j" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
 
@@ -522,7 +522,7 @@ public class UserNeo4jService implements IUserNeo4jService {
                 return userNeo4j1;
             }
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            log.error("Errore in getUser", e);
             return null;
         }
     }
@@ -532,6 +532,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             return new ResponseEntity<>("username correctly updated", HttpStatus.OK);
         }
         catch (Exception e) {
+            log.error("Errore in updateUser", e);
             return new ResponseEntity<>("error in updating username in neo4j: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
