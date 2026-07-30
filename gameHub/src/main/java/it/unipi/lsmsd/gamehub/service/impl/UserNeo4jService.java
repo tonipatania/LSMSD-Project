@@ -25,8 +25,6 @@ import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static java.util.Arrays.stream;
-
 @Service
 @Slf4j
 public class UserNeo4jService implements IUserNeo4jService {
