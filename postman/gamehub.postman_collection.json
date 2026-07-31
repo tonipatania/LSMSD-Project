@@ -52,7 +52,7 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{base}}game/gameSelected/delete/6582b6ed3a6e95131310dcee?gameId=65ca42aad8da3c72d4b0026d",
+									"raw": "{{base}}game/gameSelected/delete/6582b6ed3a6e95131310dcee?gameId=657f3bc24fb3aa828b297c53",
 									"host": [
 										"{{base}}game"
 									],
@@ -64,7 +64,7 @@
 									"query": [
 										{
 											"key": "gameId",
-											"value": "65ca42aad8da3c72d4b0026d"
+											"value": "657f3bc24fb3aa828b297c53"
 										}
 									]
 								}
@@ -590,7 +590,7 @@
 								"method": "DELETE",
 								"header": [],
 								"url": {
-									"raw": "{{base}}review/reviewSelected/delete/6582b6ed3a6e95131310dced?reviewId=65c9fc0ef7072a0516a5fd8e",
+									"raw": "{{base}}review/reviewSelected/delete/6582b6ed3a6e95131310dced?reviewId=6582b6cdcb6838f7c55858ee",
 									"host": [
 										"{{base}}review"
 									],
@@ -602,7 +602,7 @@
 									"query": [
 										{
 											"key": "reviewId",
-											"value": "65c9fc0ef7072a0516a5fd8e"
+											"value": "6582b6cdcb6838f7c55858ee"
 										}
 									]
 								}
