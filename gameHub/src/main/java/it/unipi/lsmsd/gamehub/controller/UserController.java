@@ -166,6 +166,26 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
+    @PostMapping("/reviewSelected/removeLikeReview")
+    public ResponseEntity<String> removeLikeFromReview(@RequestParam String username, String id) {
+        Boolean likeRemoved = userNeo4jService.removeLikeFromReview(username, id);
+        if (id != null && likeRemoved != null && likeRemoved) {
+            return ResponseEntity.ok("removed like");
+        } else if (id != null && likeRemoved != null) {
+            return ResponseEntity.ok("no removed like");
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
+    @GetMapping("/reviewSelected/likedReviews")
+    public ResponseEntity<Object> getLikedReviews(@RequestParam String username) {
+        List<String> reviewIds = userNeo4jService.getLikedReviewIds(username);
+        if (reviewIds != null) {
+            return ResponseEntity.ok(reviewIds);
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
     // funzione admin
     @GetMapping("/countUser/{userId}")
     public ResponseEntity<Object> countGame(@PathVariable String userId){

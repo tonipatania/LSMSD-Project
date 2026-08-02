@@ -41,6 +41,10 @@ public interface IUserNeo4jService {
 
     public Boolean addLikeToReview(String username,String id);
 
+    public Boolean removeLikeFromReview(String username,String id);
+
+    public List<String> getLikedReviewIds(String username);
+
     public long countUserDocument();
 
 

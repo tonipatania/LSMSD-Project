@@ -448,6 +448,61 @@ public class UserNeo4jService implements IUserNeo4jService {
     }
 
 
+    @Override
+    public Boolean removeLikeFromReview(String username, String id) {
+        try {
+            Long removed = userNeo4jRepository.removeLikeFromReview(username, id);
+            if (removed == null || removed == 0) {
+                //l'utente non aveva messo like: non si tocca il likeCount
+                return false;
+            }
+
+            //il like c'era davvero, quindi si decrementa anche su mongoDB
+            Optional<Review> optionalReview = reviewRepository.findById(id);
+            if (optionalReview.isEmpty()) {
+                return false;
+            }
+
+            Review review = optionalReview.get();
+            review.setLikeCount(Math.max(0, review.getLikeCount() - 1));
+            reviewRepository.save(review);
+
+            //se la review e' tra quelle embedded nel gioco si aggiorna anche li' e si riordina.
+            //un like in meno non puo' far entrare la review tra le top, quindi non serve
+            //ricalcolare la lista da zero
+            List<Game> game = gameRepository.findByName(review.getTitle());
+            if (game.isEmpty() || game.get(0).getReviews() == null) {
+                return true;
+            }
+
+            for (Review embeddedReview : game.get(0).getReviews()) {
+                if (review.getId().equals(embeddedReview.getId())) {
+                    embeddedReview.setLikeCount(review.getLikeCount());
+                    gameService.updateGameEmbeddedReview(game.get(0));
+                    log.debug("update embedded reviews after unlike");
+                    break;
+                }
+            }
+
+            return true;
+        } catch (Exception e) {
+            log.error("Errore in removeLikeFromReview", e);
+            return null;
+        }
+    }
+
+
+    @Override
+    public List<String> getLikedReviewIds(String username) {
+        try {
+            return userNeo4jRepository.findLikedReviewIds(username);
+        } catch (Exception e) {
+            log.error("Errore in getLikedReviewIds", e);
+            return Collections.emptyList();
+        }
+    }
+
+
 
     @Override
     public long countUserDocument(){
