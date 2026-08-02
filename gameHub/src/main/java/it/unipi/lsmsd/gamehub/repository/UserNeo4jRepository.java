@@ -100,6 +100,14 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
  @Query("MATCH (user:UserNeo4j{username:$username})-[like:LIKE]->(review:ReviewNeo4j{id: $id}) DELETE like")
  void deleteLikeFromReview(@Param("username") String username, @Param("id") String id);
 
+ //rimuove il like e dice se il like esisteva davvero
+ @Query("MATCH (user:UserNeo4j{username:$username})-[like:LIKE]->(review:ReviewNeo4j{id: $id}) DELETE like RETURN count(like) AS removed")
+ Long removeLikeFromReview(@Param("username") String username, @Param("id") String id);
+
+ //id delle review a cui l'utente ha messo like
+ @Query("MATCH (user:UserNeo4j{username:$username})-[:LIKE]->(review:ReviewNeo4j) RETURN review.id")
+ List<String> findLikedReviewIds(@Param("username") String username);
+
     @Query("MATCH (a:UserNeo4j {username: $followerUsername}), (b:UserNeo4j {username: $followedUsername}) MERGE (a)-[:FOLLOW]->(b)")
     void followUser(String followerUsername, String followedUsername);
     @Query("MATCH (a:UserNeo4j {username: $followerUsername})-[r:FOLLOW]->(b:UserNeo4j {username: $followedUsername}) DELETE r")
