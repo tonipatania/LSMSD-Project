@@ -5,7 +5,7 @@ Spring Boot backend for **GameHub**, a social network for video games. Built for
 polyglot persistence: **MongoDB** stores the core entities (users, games, reviews), while
 **Neo4j** models the social graph (follows, wishlist, likes, friend/game suggestions).
 
-Frontend companion project: [`gameHub-FE`](../gameHub-FE) (Angular).
+Frontend companion project: [`gameHub-FE`](https://github.com/tonipatania/gameHub-FE) (Angular).
 
 ## Stack
 
