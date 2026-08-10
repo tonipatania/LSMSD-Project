@@ -9,8 +9,6 @@ import org.springframework.data.annotation.Id;
 @Setter
 @ToString
 public class ReviewDTOAggregation {
-    @Id
-    private String Username;
+    @Id private String Username;
     private Integer likeCount;
-
 }

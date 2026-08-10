@@ -1,37 +1,33 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
-import lombok.extern.slf4j.Slf4j;
-
-
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.repository.GameNeo4jRepository;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
 import it.unipi.lsmsd.gamehub.service.IGameNeo4jService;
+import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 @Service
 @Slf4j
 public class GameNeo4jService implements IGameNeo4jService {
-    @Autowired
-    private GameNeo4jRepository gameNeo4jRepository;
-    @Autowired
-    private GameRepository gameRepository;
+    @Autowired private GameNeo4jRepository gameNeo4jRepository;
+    @Autowired private GameRepository gameRepository;
 
     @Override
     public Integer getGamesIngoingLinks(String name) {
         try {
             return gameNeo4jRepository.findGameIngoingLinks(name);
-        }catch (Exception e){
+        } catch (Exception e) {
             log.error("Errore in getGamesIngoingLinks", e);
             return null;
         }
     }
+
     // numero di giochi consigliati mostrati nella sidebar della Home
     private static final int SUGGESTIONS_LIMIT = 10;
 
@@ -42,7 +38,8 @@ public class GameNeo4jService implements IGameNeo4jService {
             // piu desiderati: la vecchia versione partiva dal gioco con la media recensioni piu
             // alta, che nel dataset e' quasi sempre un titolo di nicchia con zero wishlist, quindi
             // il suggerimento risultava sistematicamente vuoto.
-            List<GameNeo4j> games = gameNeo4jRepository.findSuggestGames(username, SUGGESTIONS_LIMIT);
+            List<GameNeo4j> games =
+                    gameNeo4jRepository.findSuggestGames(username, SUGGESTIONS_LIMIT);
             if (games.isEmpty()) {
                 games = gameNeo4jRepository.findMostWishlistedGames(SUGGESTIONS_LIMIT);
             }
@@ -57,24 +54,27 @@ public class GameNeo4jService implements IGameNeo4jService {
             return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
     public ResponseEntity<String> removeGame(String gameId) {
         try {
             gameNeo4jRepository.removeGame(gameId);
             return new ResponseEntity<>("game deleted", HttpStatus.OK);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("Errore in removeGame", e);
-            return new ResponseEntity<>("deletion error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(
+                    "deletion error: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    public ResponseEntity<String> addGame(String id, String name){
+
+    public ResponseEntity<String> addGame(String id, String name) {
         try {
             gameNeo4jRepository.addGame(id, name);
             return new ResponseEntity<>("game inserted correctly", HttpStatus.CREATED);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("Errore in addGame", e);
-            return new ResponseEntity<>("error inserted game in neo4j: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(
+                    "error inserted game in neo4j: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

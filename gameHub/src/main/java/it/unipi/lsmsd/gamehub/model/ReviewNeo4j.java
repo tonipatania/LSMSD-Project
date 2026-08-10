@@ -9,9 +9,7 @@ import org.springframework.data.neo4j.core.schema.Node;
 @Getter
 @Setter
 @ToString
-
 @Node
 public class ReviewNeo4j {
-    @Id
-    private String id;
+    @Id private String id;
 }

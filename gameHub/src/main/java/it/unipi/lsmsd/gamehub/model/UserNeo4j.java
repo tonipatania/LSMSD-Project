@@ -9,11 +9,8 @@ import org.springframework.data.neo4j.core.schema.Id;
 @Getter
 @Setter
 @ToString
-
 @NodeEntity("UserNeo4j")
-
 public class UserNeo4j {
-    @Id
-    private String id;
+    @Id private String id;
     private String username;
 }

@@ -9,8 +9,7 @@ import org.springframework.data.annotation.Id;
 @Setter
 @ToString
 public class GameDTOAggregation {
-    @Id
-    private String genres;
+    @Id private String genres;
     private double avgScore;
     private int count;
 }

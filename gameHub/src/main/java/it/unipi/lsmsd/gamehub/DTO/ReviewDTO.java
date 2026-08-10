@@ -15,5 +15,4 @@ public class ReviewDTO {
     private int userScore;
     private String comment;
     private String username;
-
 }

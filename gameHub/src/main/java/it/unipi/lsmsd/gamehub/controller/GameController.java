@@ -7,6 +7,7 @@ import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -16,21 +17,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RequestMapping("game")
 @RestController
 @Slf4j
 public class GameController {
-    @Autowired
-    private IGameService gameService;
+    @Autowired private IGameService gameService;
 
-    @Autowired
-    private ILoginService iLoginService;
+    @Autowired private ILoginService iLoginService;
 
-    @Autowired
-    private GameNeo4jService gameNeo4jService;
-
+    @Autowired private GameNeo4jService gameNeo4jService;
 
     /*Postman parameters
     {
@@ -39,11 +34,16 @@ public class GameController {
         "avgScore":5
     }*/
     @GetMapping("/searchFilter")
-    public ResponseEntity<Object> retrieveGamesByParameters(@RequestParam(required = false) String name,
-                                                             @RequestParam(required = false) List<String> genres,
-                                                             @RequestParam(required = false) Integer avgScore,
-                                                             @PageableDefault(sort = { "name" }, size = 24) Pageable pageable) {
-        Page<Game> gamePage = gameService.retrieveGamesByParameters(name, genres, avgScore, pageable);
+    public ResponseEntity<Object> retrieveGamesByParameters(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) List<String> genres,
+            @RequestParam(required = false) Integer avgScore,
+            @PageableDefault(
+                            sort = {"name"},
+                            size = 24)
+                    Pageable pageable) {
+        Page<Game> gamePage =
+                gameService.retrieveGamesByParameters(name, genres, avgScore, pageable);
         return ResponseEntity.ok(gamePage);
     }
 
@@ -56,38 +56,40 @@ public class GameController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-
     //  average score for each genre - descending order
     @GetMapping("/gameAggr1")
     public ResponseEntity<Object> retrieveAggregateGamesByGenresAndSortByScore() {
-        List<GameDTOAggregation> gameList = gameService.retrieveAggregateGamesByGenresAndSortByScore();
+        List<GameDTOAggregation> gameList =
+                gameService.retrieveAggregateGamesByGenresAndSortByScore();
 
-        if (gameList!=null && !gameList.isEmpty()) {
+        if (gameList != null && !gameList.isEmpty()) {
             return ResponseEntity.ok(gameList);
-        }else if(gameList!=null && gameList.isEmpty()) {
+        } else if (gameList != null && gameList.isEmpty()) {
             return ResponseEntity.ok("gameList empty");
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
-
 
     // average score for each year - descending order
     @GetMapping("/gameAggr2")
     public ResponseEntity<Object> findAggregation() {
         List<GameDTOAggregation2> gameList = gameService.findAggregation4();
 
-        if (gameList!=null && !gameList.isEmpty()) {
+        if (gameList != null && !gameList.isEmpty()) {
             return ResponseEntity.ok(gameList);
-        }else if(gameList!=null && gameList.isEmpty()) {
+        } else if (gameList != null && gameList.isEmpty()) {
             return ResponseEntity.ok("gameList empty");
         }
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-
     @GetMapping("/getAll")
-    public ResponseEntity<Page<Game>> showGames(@PageableDefault(sort = { "name" }, size = 50) Pageable pageable) {
+    public ResponseEntity<Page<Game>> showGames(
+            @PageableDefault(
+                            sort = {"name"},
+                            size = 50)
+                    Pageable pageable) {
         Page<Game> gameDTOPage = gameService.getAll(pageable);
         if (pageable.getPageNumber() >= gameDTOPage.getTotalPages()) {
             // La pagina richiesta supera il numero massimo di pagine disponibili
@@ -100,8 +102,7 @@ public class GameController {
         return ResponseEntity.ok(gameDTOPage);
     }
 
-
-    //admin function
+    // admin function
     /*Postman parameters
     {
         "name": "Prova",
@@ -115,41 +116,51 @@ public class GameController {
             "genres": "Tutti"
     }*/
     @PostMapping("/create/{userId}")
-    public ResponseEntity<String> createGame(@PathVariable String userId,@RequestBody GameDTO gameDTO) {
+    public ResponseEntity<String> createGame(
+            @PathVariable String userId, @RequestBody GameDTO gameDTO) {
         // check if the admin perform the operation
-        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
-        if(responseEntity.getStatusCode() != HttpStatus.OK) {
-            log.warn("Utente {} senza permessi ha tentato di creare il gioco {}", userId, gameDTO.getName());
+        ResponseEntity<String> responseEntity = iLoginService.roleUser(userId);
+        if (responseEntity.getStatusCode() != HttpStatus.OK) {
+            log.warn(
+                    "Utente {} senza permessi ha tentato di creare il gioco {}",
+                    userId,
+                    gameDTO.getName());
             return responseEntity;
         }
         // add game in mongo
         responseEntity = gameService.createGame(gameDTO);
-        if(responseEntity.getStatusCode() != HttpStatus.CREATED)
+        if (responseEntity.getStatusCode() != HttpStatus.CREATED) {
             return responseEntity;
+        }
         // add game in neo4j
-        ResponseEntity<String> response = gameNeo4jService.addGame(responseEntity.getBody(), gameDTO.getName());
-        if(response.getStatusCode() == HttpStatus.CREATED) {
+        ResponseEntity<String> response =
+                gameNeo4jService.addGame(responseEntity.getBody(), gameDTO.getName());
+        if (response.getStatusCode() == HttpStatus.CREATED) {
             log.info("Utente {} ha creato il gioco {}", userId, gameDTO.getName());
             return response;
         }
         // delete game in mongo if is not created in neo4j
-        log.error("Creazione del gioco {} fallita in Neo4j, rollback del documento Mongo {}",
-                gameDTO.getName(), responseEntity.getBody());
+        log.error(
+                "Creazione del gioco {} fallita in Neo4j, rollback del documento Mongo {}",
+                gameDTO.getName(),
+                responseEntity.getBody());
         return gameService.deleteGame(responseEntity.getBody());
     }
 
-    //admin function
+    // admin function
     @DeleteMapping("gameSelected/delete/{userId}")
-    public ResponseEntity<String> deleteGame(@PathVariable String userId, @RequestParam String gameId) {
+    public ResponseEntity<String> deleteGame(
+            @PathVariable String userId, @RequestParam String gameId) {
         // check if the admin perform the operation
-        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
-        if(responseEntity.getStatusCode() != HttpStatus.OK) {
-            log.warn("Utente {} senza permessi ha tentato di eliminare il gioco {}", userId, gameId);
+        ResponseEntity<String> responseEntity = iLoginService.roleUser(userId);
+        if (responseEntity.getStatusCode() != HttpStatus.OK) {
+            log.warn(
+                    "Utente {} senza permessi ha tentato di eliminare il gioco {}", userId, gameId);
             return responseEntity;
         }
         // delete in mongo
         responseEntity = gameService.deleteGame(gameId);
-        if(responseEntity.getStatusCode() != HttpStatus.OK) {
+        if (responseEntity.getStatusCode() != HttpStatus.OK) {
             return responseEntity;
         }
         // delete in neo4j
@@ -157,38 +168,38 @@ public class GameController {
         return gameNeo4jService.removeGame(gameId);
     }
 
-
-    //admin function
+    // admin function
     @GetMapping("/countGame/{userId}")
-    public ResponseEntity<Object> countGame(@PathVariable String userId){
-        //check if the admin perform the operation
-        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
-        if(responseEntity.getStatusCode() != HttpStatus.OK) {
-            return ResponseEntity.status(responseEntity.getStatusCode()).body(responseEntity.getBody());
+    public ResponseEntity<Object> countGame(@PathVariable String userId) {
+        // check if the admin perform the operation
+        ResponseEntity<String> responseEntity = iLoginService.roleUser(userId);
+        if (responseEntity.getStatusCode() != HttpStatus.OK) {
+            return ResponseEntity.status(responseEntity.getStatusCode())
+                    .body(responseEntity.getBody());
         }
 
-        long count= gameService.countGameDocument();
+        long count = gameService.countGameDocument();
         return ResponseEntity.ok(count);
     }
 
-    //admin function
+    // admin function
     @GetMapping("gameSelected/getGamesIngoingLinks/{userId}")
-    public ResponseEntity<Object> getGamesIngoingLinks(@PathVariable String userId, @RequestParam String name) {
+    public ResponseEntity<Object> getGamesIngoingLinks(
+            @PathVariable String userId, @RequestParam String name) {
         // check if the admin perform the operation
-        ResponseEntity<String> responseEntity= iLoginService.roleUser(userId);
-        if(responseEntity.getStatusCode() != HttpStatus.OK) {
-            //return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-            return ResponseEntity.status(responseEntity.getStatusCode()).body(responseEntity.getBody());
+        ResponseEntity<String> responseEntity = iLoginService.roleUser(userId);
+        if (responseEntity.getStatusCode() != HttpStatus.OK) {
+            // return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            return ResponseEntity.status(responseEntity.getStatusCode())
+                    .body(responseEntity.getBody());
         }
-        Integer countLinks= gameNeo4jService.getGamesIngoingLinks(name);
-        if (countLinks!=null) {
+        Integer countLinks = gameNeo4jService.getGamesIngoingLinks(name);
+        if (countLinks != null) {
             return ResponseEntity.ok(countLinks);
         }
 
-
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
-
 
     @GetMapping("/suggestGames/{username}")
     public ResponseEntity<List<Game>> suggestGames(@PathVariable String username) {
@@ -197,8 +208,8 @@ public class GameController {
 
     // games that actually have review content, used for the home page's review feed
     @GetMapping("/withReviews")
-    public ResponseEntity<List<Game>> getGamesWithReviews(@RequestParam(defaultValue = "20") int size) {
+    public ResponseEntity<List<Game>> getGamesWithReviews(
+            @RequestParam(defaultValue = "20") int size) {
         return ResponseEntity.ok(gameService.getGamesWithReviews(size));
     }
 }
-

@@ -8,7 +8,6 @@ import lombok.*;
 @Getter
 @Setter
 @ToString
-
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class GameDTO {
     private String id;
