@@ -118,6 +118,12 @@ public class GameService implements IGameService {
             existingReviews.addAll(top20Reviews);
 
             game.setReviews(existingReviews);
+            // stesso criterio del vecchio filtro 'Reviews.0.Comment' != '': la prima review (la
+            // piu' apprezzata, essendo ordinata per likeCount) ha un commento non vuoto
+            game.setHasReviews(
+                    !existingReviews.isEmpty()
+                            && existingReviews.get(0).getComment() != null
+                            && !existingReviews.get(0).getComment().isEmpty());
 
             // Save the updated game document
             gameRepository.save(game);
