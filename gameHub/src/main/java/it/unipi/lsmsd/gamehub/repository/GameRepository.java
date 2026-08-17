@@ -18,6 +18,10 @@ public interface GameRepository extends MongoRepository<Game, String>, GameRepos
     // avgScore isn't derived from the embedded Reviews array (most 100-score games have only
     // a placeholder empty review), so picking games for a review feed needs to filter on
     // actually having review content instead of sorting by score.
-    @Query("{ 'Reviews.0.Comment': { $ne: '' } }")
+    //
+    // hasReviews e' un campo indicizzato precalcolato (vedi Game.hasReviews e
+    // GameService.updateGameReviewFromScratch): il filtro precedente su 'Reviews.0.Comment'
+    // forzava un COLLSCAN perche' un array embedded non e' indicizzabile per posizione.
+    @Query("{ 'hasReviews': true }")
     List<Game> findGamesWithReviews(Pageable pageable);
 }

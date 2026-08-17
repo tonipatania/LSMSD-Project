@@ -56,4 +56,13 @@ public class Game {
 
     @Field("Reviews")
     private List<Review> reviews;
+
+    // Precalcolato ad ogni scrittura delle Reviews embedded (vedi
+    // GameService.updateGameReviewFromScratch): rispecchia "la prima review embedded ha un
+    // commento non vuoto", lo stesso criterio prima espresso come filtro Reviews.0.Comment != ''.
+    // Un campo dedicato e indicizzato evita il COLLSCAN che quel filtro causava sull'array
+    // embedded.
+    @Indexed
+    @Field("hasReviews")
+    private boolean hasReviews;
 }
