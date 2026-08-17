@@ -5,17 +5,22 @@ import it.unipi.lsmsd.gamehub.model.*;
 import it.unipi.lsmsd.gamehub.repository.*;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -30,17 +35,26 @@ public class UserNeo4jService implements IUserNeo4jService {
 
     @Autowired private ReviewRepository reviewRepository;
 
+    @Autowired private RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    @Qualifier("suggestionsExecutor")
+    private Executor suggestionsExecutor;
+
     // numero di suggerimenti mostrati nella sidebar della Home
     private static final int SUGGESTIONS_LIMIT = 10;
     private static final int POPULAR_POOL_SIZE = 100;
-    private static final long POPULAR_CACHE_TTL_MS = 10 * 60 * 1000L;
+
+    private static final String POPULAR_CACHE_KEY = "gamehub:suggestions:popular";
+    private static final Duration POPULAR_CACHE_TTL = Duration.ofMinutes(10);
+    private static final String FRIENDS_CACHE_KEY_PREFIX = "gamehub:suggestions:friends:";
+    // TTL piu' breve del pool "popular": e' personalizzata per utente, quindi una staleness lunga
+    // sarebbe piu' visibile (es. un follow appena fatto che tarda a sparire dai suggerimenti).
+    private static final Duration FRIENDS_CACHE_TTL = Duration.ofMinutes(2);
 
     // le date del dump sono nel formato inglese "Oct 21, 2008"
     private static final DateTimeFormatter RELEASE_DATE_FORMAT =
             DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
-
-    private volatile List<SuggestedUserDTO> popularUsersCache;
-    private volatile long popularUsersCachedAt;
 
     @Autowired private IGameService gameService;
 
@@ -290,21 +304,40 @@ public class UserNeo4jService implements IUserNeo4jService {
     @Override
     public List<SuggestedUserDTO> getSuggestedFriends(String username) {
         try {
-            // Cascata: si scende di livello solo se il precedente non produce risultati, cosi la
-            // sezione "Persone da seguire" resta personalizzata quando possibile e non e mai vuota.
-            List<SuggestedUserDTO> suggestions =
-                    userNeo4jRepository.findSuggestedFriends(username, SUGGESTIONS_LIMIT);
-            if (!suggestions.isEmpty()) {
-                return suggestions;
+            String cacheKey = FRIENDS_CACHE_KEY_PREFIX + username;
+            List<SuggestedUserDTO> cached = readSuggestionsCache(cacheKey);
+            if (cached != null) {
+                return cached;
             }
 
-            suggestions =
-                    userNeo4jRepository.findUsersWithSimilarTastes(username, SUGGESTIONS_LIMIT);
-            if (!suggestions.isEmpty()) {
-                return suggestions;
+            // Livello 1 (amici-di-amici) e livello 2 (gusti simili) sono indipendenti: partono
+            // insieme invece che in cascata, cosi nel caso comune in cui il livello 1 non produce
+            // risultati (query da ~500ms) non si paga anche per intero il tempo del livello 2
+            // (~350ms) in sequenza, ma solo il piu lento dei due.
+            CompletableFuture<List<SuggestedUserDTO>> level1Future =
+                    CompletableFuture.supplyAsync(
+                            () ->
+                                    userNeo4jRepository.findSuggestedFriends(
+                                            username, SUGGESTIONS_LIMIT),
+                            suggestionsExecutor);
+            CompletableFuture<List<SuggestedUserDTO>> level2Future =
+                    CompletableFuture.supplyAsync(
+                            () ->
+                                    userNeo4jRepository.findUsersWithSimilarTastes(
+                                            username, SUGGESTIONS_LIMIT),
+                            suggestionsExecutor);
+
+            List<SuggestedUserDTO> suggestions = level1Future.join();
+            if (suggestions.isEmpty()) {
+                suggestions = level2Future.join();
             }
 
-            return mostFollowedUsersFor(username);
+            if (suggestions.isEmpty()) {
+                suggestions = mostFollowedUsersFor(username);
+            }
+
+            writeSuggestionsCache(cacheKey, suggestions, FRIENDS_CACHE_TTL);
+            return suggestions;
         } catch (Exception e) {
             log.error("Errore in getSuggestedFriends", e);
             return null;
@@ -312,7 +345,7 @@ public class UserNeo4jService implements IUserNeo4jService {
     }
 
     // La classifica globale costa una scansione di tutte le relazioni FOLLOW (~1,5s sul dataset
-    // completo) ed e' identica per tutti: la si calcola una volta ogni POPULAR_CACHE_TTL_MS e si
+    // completo) ed e' identica per tutti: la si calcola una volta ogni POPULAR_CACHE_TTL e si
     // personalizza il risultato scartando l'utente stesso e chi gia' segue.
     private List<SuggestedUserDTO> mostFollowedUsersFor(String username) {
         Set<String> excluded =
@@ -328,17 +361,36 @@ public class UserNeo4jService implements IUserNeo4jService {
     }
 
     private List<SuggestedUserDTO> cachedMostFollowedUsers() {
-        List<SuggestedUserDTO> cached = popularUsersCache;
-        if (cached != null
-                && System.currentTimeMillis() - popularUsersCachedAt < POPULAR_CACHE_TTL_MS) {
+        List<SuggestedUserDTO> cached = readSuggestionsCache(POPULAR_CACHE_KEY);
+        if (cached != null) {
             return cached;
         }
         // il pool e' piu ampio del numero di suggerimenti mostrati, cosi resta abbastanza margine
         // dopo aver scartato gli utenti gia' seguiti
         List<SuggestedUserDTO> fresh = userNeo4jRepository.findMostFollowedUsers(POPULAR_POOL_SIZE);
-        popularUsersCache = fresh;
-        popularUsersCachedAt = System.currentTimeMillis();
+        writeSuggestionsCache(POPULAR_CACHE_KEY, fresh, POPULAR_CACHE_TTL);
         return fresh;
+    }
+
+    // La cache su Redis e' un'ottimizzazione, non la fonte di verita' (che resta Neo4j): se Redis
+    // non e' raggiungibile i suggerimenti devono comunque funzionare, solo un po' piu lenti.
+    @SuppressWarnings("unchecked")
+    private List<SuggestedUserDTO> readSuggestionsCache(String key) {
+        try {
+            Object cached = redisTemplate.opsForValue().get(key);
+            return cached == null ? null : (List<SuggestedUserDTO>) cached;
+        } catch (Exception e) {
+            log.warn("Redis non raggiungibile in lettura per la chiave {}", key, e);
+            return null;
+        }
+    }
+
+    private void writeSuggestionsCache(String key, List<SuggestedUserDTO> value, Duration ttl) {
+        try {
+            redisTemplate.opsForValue().set(key, value, ttl);
+        } catch (Exception e) {
+            log.warn("Redis non raggiungibile in scrittura per la chiave {}", key, e);
+        }
     }
 
     @Override
