@@ -28,6 +28,31 @@ The app needs a running MongoDB (`mongodb://localhost:27017/game`) and Neo4j (`b
 
 There is no linter/formatter configured in this project.
 
+## Testing
+
+Three layers, three skills (`.claude/skills/backend-tests`, `backend-integration-tests`,
+`backend-e2e-tests` — read the relevant one before writing tests):
+
+- **Unit tests** (`*Test.java`, mocked repositories) — `./mvnw test`. Almost all of them need no
+  DB, but `GameHubApplicationTests.contextLoads()` loads the full app context against the real
+  `mongo_local`/`neo4j_local` connection settings in `application.properties`, so those two
+  containers must already be running (`docker start mongo_local neo4j_local`) even for a plain
+  `./mvnw test`.
+- **Integration tests** (`*IT.java`, real Mongo+Neo4j via Testcontainers, one flow/layer at a
+  time) and **e2e tests** (`*E2EIT.java`, full HTTP journeys via RestAssured against a
+  fully-started app) both run under `./mvnw verify` (bound to `maven-failsafe-plugin`, not
+  `maven-surefire-plugin`) — needs a working Docker daemon, and `mongo_local`/`neo4j_local` running
+  too, since `verify` runs the full `test` phase first. Testcontainers itself starts fresh,
+  disposable `mongo:7.0`/`neo4j:5.15` containers (see `support/IntegrationTestSupport.java`), never
+  touching `mongo_local`/`neo4j_local` or their dataset. `pom.xml`'s `maven-failsafe-plugin` sets
+  `api.version=1.40` for the forked test JVM — without it, Testcontainers' hardcoded default Docker
+  API version (1.32) gets rejected by newer Docker Engine builds ("client version 1.32 is too old.
+  Minimum supported API version is 1.40"); this is a testcontainers-java quirk unrelated to this
+  project's code, confirmed still present as of testcontainers 1.21.3.
+- The `backend-test-runner` subagent (`.claude/agents/`) runs and summarizes the Docker-backed
+  suite without dumping raw Maven output into the main conversation — use it for `./mvnw verify`
+  runs during normal work.
+
 ## Architecture: dual-database write-through pattern
 
 Every core entity (`User`, `Game`, `Review`) has two representations:
