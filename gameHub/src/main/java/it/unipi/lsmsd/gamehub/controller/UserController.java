@@ -141,9 +141,9 @@ public class UserController {
     @PostMapping("/reviewSelected/addLikeReview")
     public ResponseEntity<String> addLikeToReview(@RequestParam String username, String id) {
         Boolean likeAdded = userNeo4jService.addLikeToReview(username, id);
-        if (id != null && likeAdded) {
+        if (id != null && likeAdded != null && likeAdded) {
             return ResponseEntity.ok("added like");
-        } else if (id != null && !likeAdded) {
+        } else if (id != null && likeAdded != null) {
             return ResponseEntity.ok("no added like");
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -187,9 +187,9 @@ public class UserController {
     public ResponseEntity<String> followUser(
             @RequestParam String followerUsername, @RequestParam String followedUsername) {
         Boolean result = userNeo4jService.followUser(followerUsername, followedUsername);
-        if (result) {
+        if (result != null && result) {
             return ResponseEntity.ok("Followed successfully");
-        } else if (!result) {
+        } else if (result != null) {
             return ResponseEntity.ok("Followed not successfully");
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -200,9 +200,9 @@ public class UserController {
     public ResponseEntity<String> unfollowUser(
             @RequestParam String followerUsername, @RequestParam String followedUsername) {
         Boolean result = userNeo4jService.unfollowUser(followerUsername, followedUsername);
-        if (result) {
+        if (result != null && result) {
             return ResponseEntity.ok("Unfollowed successfully");
-        } else if (!result) {
+        } else if (result != null) {
             return ResponseEntity.ok("Unfollowed not successfully");
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -237,7 +237,7 @@ public class UserController {
         UserNeo4j userNeo4j = userNeo4jService.getUser(username);
         if (userNeo4j != null && !userNeo4j.getId().equals("null")) {
             return ResponseEntity.ok(userNeo4j);
-        } else if (userNeo4j.getId().equals("null")) {
+        } else if (userNeo4j != null && userNeo4j.getId().equals("null")) {
             // empty body rather than a plain-text message: Spring's String converter writes
             // unquoted raw text even with an application/json content type, which Angular's
             // HttpClient can't parse and turns into an error instead of a normal 200 response.
