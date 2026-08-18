@@ -139,8 +139,11 @@ class ReviewControllerTest {
     }
 
     @Test
-    void createReview_neo4jFails_rollsBackByDeletingReviewUsingRequestBodyId() throws Exception {
-        ReviewDTO dto = new ReviewDTO("clientSuppliedId", "BARRIER X", 8, "Amazing", "Kaistlin");
+    void createReview_neo4jFails_rollsBackByDeletingReviewUsingMongoAssignedId() throws Exception {
+        // No client-supplied id, matching real create requests (see the create-review Postman
+        // example in the controller): the rollback must use the id Mongo actually assigned
+        // (review.getId() == "r1"), not reviewDTO.getId(), which is null here.
+        ReviewDTO dto = new ReviewDTO(null, "BARRIER X", 8, "Amazing", "Kaistlin");
         when(review2Service.createReview(any(ReviewDTO.class)))
                 .thenReturn(review("r1", "BARRIER X"));
         when(reviewNeo4jService.createReview("r1"))
@@ -154,11 +157,7 @@ class ReviewControllerTest {
                                 .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk());
 
-        // the rollback deletes by the id from the *request DTO*, not the id Mongo actually
-        // assigned to the saved review (review.getId() == "r1") -- this only works if the client
-        // happens to send an id, which the create-review Postman example in the controller does
-        // not.
-        verify(review2Service).deleteReview("clientSuppliedId");
+        verify(review2Service).deleteReview("r1");
     }
 
     @Test
