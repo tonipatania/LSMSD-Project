@@ -30,6 +30,11 @@
 			<artifactId>spring-boot-starter-data-neo4j</artifactId>
 		</dependency>
 
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis</artifactId>
+		</dependency>
+
 		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
@@ -40,6 +45,29 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-api</artifactId>
+			<version>0.12.3</version>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-impl</artifactId>
+			<version>0.12.3</version>
+			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>io.jsonwebtoken</groupId>
+			<artifactId>jjwt-jackson</artifactId>
+			<version>0.12.3</version>
+			<scope>runtime</scope>
 		</dependency>
 
 		<dependency>
@@ -66,6 +94,36 @@
 		<dependency>
 			<groupId>io.projectreactor</groupId>
 			<artifactId>reactor-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Integration tests: real Mongo + Neo4j via ephemeral containers instead of the
+			 shared local dev instances (see gameHub/.claude/skills/backend-integration-tests). -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>mongodb</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>neo4j</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- End-to-end tests: fluent HTTP client against the fully-started app (RANDOM_PORT). -->
+		<dependency>
+			<groupId>io.rest-assured</groupId>
+			<artifactId>rest-assured</artifactId>
 			<scope>test</scope>
 		</dependency>
 
@@ -110,6 +168,76 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<!-- Integration/e2e tests (Testcontainers-backed, class name ending in "IT") run
+					 here, in the verify phase, not under surefire's `mvnw test` - they need Docker
+					 and take much longer than the mocked unit tests, so they stay opt-in via
+					 `mvnw verify` instead of slowing down every `mvnw test` run. -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<!-- org.testcontainers.dockerclient.DockerClientProviderStrategy hardcodes
+							 Docker API version 1.32 whenever no explicit "api.version" is set, which
+							 recent Docker Engine releases reject outright ("client version 1.32 is
+							 too old. Minimum supported API version is 1.40"). This is independent of
+							 the testcontainers version - 1.21.3 still has the same hardcoded 1.32
+							 fallback deep in DefaultDockerClientConfig$Builder, so bumping the
+							 dependency doesn't fix it; only setting this property does. 1.40 is the
+							 documented floor; raise it if a future Docker Engine moves that floor. -->
+						<api.version>1.40</api.version>
+					</systemPropertyVariables>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>com.diffplug.spotless</groupId>
+				<artifactId>spotless-maven-plugin</artifactId>
+				<version>2.43.0</version>
+				<configuration>
+					<java>
+						<googleJavaFormat>
+							<version>1.19.2</version>
+							<style>AOSP</style>
+						</googleJavaFormat>
+						<removeUnusedImports/>
+						<trimTrailingWhitespace/>
+						<endWithNewline/>
+						<indent>
+							<tabs>false</tabs>
+							<spaces>true</spaces>
+							<spacesPerTab>4</spacesPerTab>
+						</indent>
+					</java>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-checkstyle-plugin</artifactId>
+				<version>3.3.1</version>
+				<dependencies>
+					<dependency>
+						<groupId>com.puppycrawl.tools</groupId>
+						<artifactId>checkstyle</artifactId>
+						<version>10.14.2</version>
+					</dependency>
+				</dependencies>
+				<configuration>
+					<configLocation>checkstyle.xml</configLocation>
+					<encoding>UTF-8</encoding>
+					<consoleOutput>true</consoleOutput>
+					<failOnViolation>true</failOnViolation>
+					<violationSeverity>warning</violationSeverity>
+					<includeTestSourceDirectory>true</includeTestSourceDirectory>
 				</configuration>
 			</plugin>
 		</plugins>

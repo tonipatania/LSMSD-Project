@@ -1,12 +1,9 @@
 package it.unipi.lsmsd.gamehub.model;
 
-
 import lombok.*;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-
-import java.util.List;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -16,12 +13,17 @@ import java.util.List;
 @Document(collection = "users")
 public class User {
 
-    @Id
-    private String id;
+    @Id private String id;
+
+    @Indexed(unique = true)
     private String username;
+
     private String name;
     private String surname;
     private String password;
+
+    @Indexed(unique = true)
     private String email;
+
     private String role;
 }

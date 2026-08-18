@@ -2,8 +2,6 @@ package it.unipi.lsmsd.gamehub.DTO;
 
 import lombok.*;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -11,8 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Field;
 @Setter
 @ToString
 public class GameDTOAggregation {
-    @Id
-    private String genres;
+    @Id private String genres;
     private double avgScore;
     private int count;
 }

@@ -7,8 +7,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ReviewNeo4jRepository extends Neo4jRepository<ReviewNeo4j,String> {
+public interface ReviewNeo4jRepository extends Neo4jRepository<ReviewNeo4j, String> {
 
-    @Query("MATCH (r:ReviewNeo4j)<-[:LIKE]-(u:UserNeo4j) WHERE r.id = $id RETURN count(u) as numberOfLinks")
+    @Query(
+            "MATCH (r:ReviewNeo4j)<-[:LIKE]-(u:UserNeo4j) WHERE r.id = $id RETURN count(u) as numberOfLinks")
     int findReviewIngoingLinks(@Param("id") String id);
 }

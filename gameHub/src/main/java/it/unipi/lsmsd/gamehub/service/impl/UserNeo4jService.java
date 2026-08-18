@@ -1,97 +1,241 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
-
-import it.unipi.lsmsd.gamehub.DTO.GameDTO;
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
+import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.*;
-
-
 import it.unipi.lsmsd.gamehub.repository.*;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static java.util.Arrays.stream;
-
 @Service
+@Slf4j
 public class UserNeo4jService implements IUserNeo4jService {
-    @Autowired
-    private UserNeo4jRepository userNeo4jRepository;
-    @Autowired
-    private LoginRepository loginRepository;
-    @Autowired
-    private GameRepository gameRepository;
-    @Autowired
-    private GameNeo4jRepository gameNeo4jRepository;
+    @Autowired private UserNeo4jRepository userNeo4jRepository;
+    @Autowired private LoginRepository loginRepository;
+    @Autowired private GameRepository gameRepository;
+    @Autowired private GameNeo4jRepository gameNeo4jRepository;
+
+    @Autowired private ReviewRepository reviewRepository;
+
+    @Autowired private RedisTemplate<String, Object> redisTemplate;
 
     @Autowired
-    private ReviewRepository reviewRepository;
+    @Qualifier("suggestionsExecutor")
+    private Executor suggestionsExecutor;
 
-    @Autowired
-    private IGameService gameService;
+    // numero di suggerimenti mostrati nella sidebar della Home
+    private static final int SUGGESTIONS_LIMIT = 10;
+    private static final int POPULAR_POOL_SIZE = 100;
+
+    private static final String POPULAR_CACHE_KEY = "gamehub:suggestions:popular";
+    private static final Duration POPULAR_CACHE_TTL = Duration.ofMinutes(10);
+    private static final String FRIENDS_CACHE_KEY_PREFIX = "gamehub:suggestions:friends:";
+    // TTL piu' breve del pool "popular": e' personalizzata per utente, quindi una staleness lunga
+    // sarebbe piu' visibile (es. un follow appena fatto che tarda a sparire dai suggerimenti).
+    private static final Duration FRIENDS_CACHE_TTL = Duration.ofMinutes(2);
+
+    // le date del dump sono nel formato inglese "Oct 21, 2008"
+    private static final DateTimeFormatter RELEASE_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
+
+    @Autowired private IGameService gameService;
 
     @Override
     public void SyncUser() {
         List<User> usersMongo = loginRepository.findAll();
         ModelMapper modelMapper = new ModelMapper();
-        List<UserNeo4j> userNeo4js = usersMongo.stream().map(User -> modelMapper.map(User, UserNeo4j.class)).toList();
+        List<UserNeo4j> userNeo4js =
+                usersMongo.stream().map(User -> modelMapper.map(User, UserNeo4j.class)).toList();
         userNeo4jRepository.saveAll(userNeo4js);
     }
 
     public void loadGames() {
         List<Game> games = gameRepository.findAll();
         ModelMapper modelMapper = new ModelMapper();
-        List<GameNeo4j> graphGames = games.stream().map(Game -> modelMapper.map(Game, GameNeo4j.class)).toList();
+        List<GameNeo4j> graphGames =
+                games.stream().map(Game -> modelMapper.map(Game, GameNeo4j.class)).toList();
         gameNeo4jRepository.saveAll(graphGames);
     }
 
-
-
     @Override
-    public List<GameNeo4j> getUserWishlist(String username,String friendUsername) {
+    public List<Game> getUserWishlist(String username, String friendUsername) {
         try {
-            if (username.equals(friendUsername)){
-                return userNeo4jRepository.findByUsername(username);
-
-            }
-            List<UserNeo4j> userNeo4jList=userNeo4jRepository.findFollowedUsers(username);
-            for (UserNeo4j userNeo4j : userNeo4jList) {
-                if (userNeo4j.getUsername().equals(friendUsername)) {
-                    // User with the desired username is present in the list
-                    return userNeo4jRepository.findByUsername(friendUsername);
-                }
-            }
-
-            return Collections.emptyList();
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+            // friendUsername assente = "voglio la mia wishlist". La pagina Wishlist non manda il
+            // parametro, quindi arrivava null: il confronto falliva, si finiva nel ramo "wishlist
+            // di un amico" e l'utente vedeva sempre una lista vuota della propria wishlist.
+            //
+            // La wishlist di un altro utente non e' piu' filtrata sui soli utenti seguiti. I
+            // suggerimenti della Home mostrano di proposito persone NON ancora seguite ("10 giochi
+            // in comune"), quindi il filtro rendeva sistematicamente vuota la wishlist di ogni
+            // profilo raggiunto da li: la card prometteva giochi in comune e il profilo diceva
+            // "nessun gioco". La sezione del profilo si chiama "Wishlist pubblica", quindi la
+            // lettura pubblica e' il comportamento coerente.
+            return enrichFromMongo(
+                    userNeo4jRepository.findByUsername(
+                            resolveWishlistOwner(username, friendUsername)));
+        } catch (Exception e) {
+            log.error("Errore in getUserWishlist", e);
             return null;
         }
     }
 
+    @Override
+    public Page<Game> getUserWishlistPage(
+            String username,
+            String friendUsername,
+            Pageable pageable,
+            String sort,
+            boolean onlyCommon) {
+        try {
+            String owner = resolveWishlistOwner(username, friendUsername);
+            // L'ordinamento non puo' essere delegato al database: l'appartenenza alla wishlist sta
+            // su Neo4j mentre prezzo e data di uscita stanno su Mongo, e releaseDate e' per giunta
+            // una stringa ("Oct 21, 2008"), quindi ordinarla su Mongo darebbe un ordine
+            // alfabetico, non cronologico. Si ordina quindi in memoria sull'intera wishlist prima
+            // di ritagliare la pagina: ordinare solo la pagina corrente darebbe un ordine
+            // globalmente sbagliato. Il costo e' accettabile perche' le wishlist sono piccole
+            // (max 39 giochi sul dataset attuale).
+            List<Game> all = enrichFromMongo(userNeo4jRepository.findByUsername(owner));
+
+            if (onlyCommon && !owner.equals(username)) {
+                // il filtro va applicato prima di ordinare e paginare, altrimenti totalElements e
+                // il numero di pagine descriverebbero la wishlist intera invece del sottoinsieme
+                // mostrato. Il confronto e' sull'id e non sul nome: 596 titoli condividono il nome
+                // con un altro gioco, quindi filtrare per nome includerebbe giochi sbagliati.
+                Set<String> commonIds =
+                        userNeo4jRepository.findCommonWishlistGames(username, owner).stream()
+                                .map(GameNeo4j::getId)
+                                .collect(Collectors.toSet());
+                all =
+                        all.stream()
+                                .filter(g -> commonIds.contains(g.getId()))
+                                .collect(Collectors.toCollection(ArrayList::new));
+            }
+
+            all.sort(wishlistComparator(sort));
+
+            int from = (int) Math.min(pageable.getOffset(), all.size());
+            int to = Math.min(from + pageable.getPageSize(), all.size());
+            return new PageImpl<>(new ArrayList<>(all.subList(from, to)), pageable, all.size());
+        } catch (Exception e) {
+            log.error("Errore in getUserWishlistPage", e);
+            return Page.empty(pageable);
+        }
+    }
+
+    private Comparator<Game> wishlistComparator(String sort) {
+        Comparator<Game> byName =
+                Comparator.comparing(
+                        g -> g.getName() == null ? "" : g.getName(), String.CASE_INSENSITIVE_ORDER);
+        if ("price".equalsIgnoreCase(sort)) {
+            return Comparator.comparingDouble(Game::getPrice).thenComparing(byName);
+        }
+        if ("release".equalsIgnoreCase(sort)) {
+            // piu recenti prima; le date illeggibili finiscono in fondo invece di rompere l'ordine
+            return Comparator.comparingLong(this::releaseEpochDay).reversed().thenComparing(byName);
+        }
+        return byName;
+    }
+
+    private long releaseEpochDay(Game game) {
+        if (game.getReleaseDate() == null || game.getReleaseDate().isBlank()) {
+            return Long.MIN_VALUE;
+        }
+        try {
+            return LocalDate.parse(game.getReleaseDate(), RELEASE_DATE_FORMAT).toEpochDay();
+        } catch (DateTimeParseException e) {
+            return Long.MIN_VALUE;
+        }
+    }
+
+    @Override
+    public List<GameNeo4j> getCommonWishlistGames(String username, String friendUsername) {
+        try {
+            if (friendUsername == null
+                    || friendUsername.isBlank()
+                    || username.equals(friendUsername)) {
+                // con se stessi "in comune" non significa nulla
+                return Collections.emptyList();
+            }
+            return userNeo4jRepository.findCommonWishlistGames(username, friendUsername);
+        } catch (Exception e) {
+            log.error("Errore in getCommonWishlistGames", e);
+            return Collections.emptyList();
+        }
+    }
+
+    // friendUsername assente o uguale al chiamante = la propria wishlist
+    private String resolveWishlistOwner(String username, String friendUsername) {
+        return (friendUsername == null || friendUsername.isBlank()) ? username : friendUsername;
+    }
+
+    // Il grafo tiene solo id+nome: la wishlist e' quindi renderizzabile solo come lista di nomi.
+    // Qui si recuperano i documenti Mongo (copertina, generi, voto, prezzo) con una sola query,
+    // sfruttando il fatto che i due store condividono gli id.
+    private List<Game> enrichFromMongo(List<GameNeo4j> graphGames) {
+        if (graphGames == null || graphGames.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> ids =
+                graphGames.stream().map(GameNeo4j::getId).filter(Objects::nonNull).toList();
+
+        Map<String, Game> byId = new HashMap<>();
+        for (Game game : gameRepository.findAllById(ids)) {
+            // le recensioni embedded non servono a una card di wishlist e pesano molto sul payload
+            game.setReviews(null);
+            byId.put(game.getId(), game);
+        }
+
+        List<Game> enriched = new ArrayList<>(graphGames.size());
+        for (GameNeo4j graphGame : graphGames) {
+            Game full = graphGame.getId() == null ? null : byId.get(graphGame.getId());
+            if (full != null) {
+                enriched.add(full);
+            } else {
+                // documento Mongo mancante: si mostra comunque id+nome, perche' un gioco aggiunto
+                // dall'utente non deve sparire silenziosamente dalla sua wishlist
+                Game placeholder = new Game();
+                placeholder.setId(graphGame.getId());
+                placeholder.setName(graphGame.getName());
+                enriched.add(placeholder);
+            }
+        }
+        return enriched;
+    }
 
     @Override
     public Boolean addGameToWishlist(String username, String name) {
         try {
-            //check if the game exists
-            GameNeo4j gameNeo4j=gameNeo4jRepository.findGameByName(name);
-            if(gameNeo4j!=null){
+            // check both the game and the user exist in the graph before linking them
+            GameNeo4j gameNeo4j = gameNeo4jRepository.findGameByName(name);
+            UserNeo4j userNeo4j = userNeo4jRepository.getUser(username);
+            if (gameNeo4j != null && userNeo4j != null) {
                 userNeo4jRepository.addGameToUser(username, name);
                 return true;
             }
 
             return false;
 
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            log.error("Errore in addGameToWishlist", e);
             return null;
         }
     }
@@ -99,8 +243,8 @@ public class UserNeo4jService implements IUserNeo4jService {
     @Override
     public Boolean deleteGameToWishlist(String username, String name) {
         try {
-            //check if the game is present in the list of the added game
-            List<GameNeo4j> gameNeo4jList= userNeo4jRepository.findByUsername(username);
+            // check if the game is present in the list of the added game
+            List<GameNeo4j> gameNeo4jList = userNeo4jRepository.findByUsername(username);
             for (GameNeo4j game : gameNeo4jList) {
                 if (game.getName().equals(name)) {
                     // The game with the provided name is present in the list
@@ -110,20 +254,33 @@ public class UserNeo4jService implements IUserNeo4jService {
             }
 
             return false;
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            log.error("Errore in deleteGameToWishlist", e);
             return null;
         }
     }
-
 
     @Override
     public List<UserNeo4j> getFollowedUser(String username) {
         try {
             return userNeo4jRepository.findFollowedUsers(username);
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            log.error("Errore in getFollowedUser", e);
             return null;
+        }
+    }
+
+    @Override
+    public Page<UserNeo4j> getFollowedUserPage(String username, Pageable pageable) {
+        try {
+            List<UserNeo4j> content =
+                    userNeo4jRepository.findFollowedUsersPage(
+                            username, pageable.getOffset(), pageable.getPageSize());
+            long total = userNeo4jRepository.countFollowedUsers(username);
+            return new PageImpl<>(content, pageable, total);
+        } catch (Exception e) {
+            log.error("Errore in getFollowedUserPage", e);
+            return Page.empty(pageable);
         }
     }
 
@@ -131,8 +288,8 @@ public class UserNeo4jService implements IUserNeo4jService {
     public List<UserNeo4j> getFriendsOfFriends(String username) {
         try {
             return userNeo4jRepository.findFriendsOfFriends(username);
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            log.error("Errore in getFriendsOfFriends", e);
             return null;
         }
     }
@@ -144,188 +301,258 @@ public class UserNeo4jService implements IUserNeo4jService {
         return userNeo4j;
     }
 
-
     @Override
-    public List<UserNeo4j> getSuggestedFriends(String username) {
+    public List<SuggestedUserDTO> getSuggestedFriends(String username) {
         try {
-
-            //get the user followed by the username
-            List<UserNeo4j> followedUser = userNeo4jRepository.findFollowedUsers(username);
-            //get the user wishlist by the username
-            List<GameNeo4j> addedGames = userNeo4jRepository.findByUsername(username);
-            //get the list of friends of the followed users
-            List<UserNeo4j> friendsOfFriends = userNeo4jRepository.findFriendsOfFriends(username);
-            //if the userFriendList is empty return an empy list
-            if(friendsOfFriends.isEmpty()){
-                return friendsOfFriends;
+            String cacheKey = FRIENDS_CACHE_KEY_PREFIX + username;
+            List<SuggestedUserDTO> cached = readSuggestionsCache(cacheKey);
+            if (cached != null) {
+                return cached;
             }
 
-            // Generate a list of friends of friends not in the followedUser list
-            List<UserNeo4j> selectFriendsOfFriends = friendsOfFriends.stream()
-                    .filter(friend -> followedUser.stream().noneMatch(f -> f.getUsername().equals(friend.getUsername())))
-                    //.limit(2)
-                    .collect(Collectors.toList());
+            // Livello 1 (amici-di-amici) e livello 2 (gusti simili) sono indipendenti: partono
+            // insieme invece che in cascata, cosi nel caso comune in cui il livello 1 non produce
+            // risultati (query da ~500ms) non si paga anche per intero il tempo del livello 2
+            // (~350ms) in sequenza, ma solo il piu lento dei due.
+            CompletableFuture<List<SuggestedUserDTO>> level1Future =
+                    CompletableFuture.supplyAsync(
+                            () ->
+                                    userNeo4jRepository.findSuggestedFriends(
+                                            username, SUGGESTIONS_LIMIT),
+                            suggestionsExecutor);
+            CompletableFuture<List<SuggestedUserDTO>> level2Future =
+                    CompletableFuture.supplyAsync(
+                            () ->
+                                    userNeo4jRepository.findUsersWithSimilarTastes(
+                                            username, SUGGESTIONS_LIMIT),
+                            suggestionsExecutor);
 
-
-            //limit the number of friendOfFriends to compare the wishlist in order to reduce the time to compare the wishlists
-            Random random = new Random();
-            Set<Integer> randomPositions = new HashSet<>();
-
-            // Generate 100 random different integers
-            while (randomPositions.size() < 50) {
-                randomPositions.add(random.nextInt(selectFriendsOfFriends.size()));
+            List<SuggestedUserDTO> suggestions = level1Future.join();
+            if (suggestions.isEmpty()) {
+                suggestions = level2Future.join();
             }
 
-            // Create a new list with elements at the random positions
-            //The map operation takes each position and retrieves the corresponding element from the selectFriendsOfFriends
-            // list using selectFriendsOfFriends::get. Finally, collect(Collectors.toList()) collects these elements into a new list.
-            List<UserNeo4j> resultFriendsOfFriends = randomPositions.stream()
-                    .map(selectFriendsOfFriends::get)
-                    .collect(Collectors.toList());
-
-            /*for(int i=0;i<resultFriendsOfFriends.size();i++){
-                System.out.println(resultFriendsOfFriends.get(i).getUsername());
-            }*/
-
-
-            //final result
-            List<UserNeo4j> suggestedFriends = new ArrayList<>();
-
-
-
-
-            for (int i = 0; i < resultFriendsOfFriends.size(); i++) {
-                System.out.println(resultFriendsOfFriends.get(i).getUsername());
-                List<GameNeo4j> friendOfFriendWishlist = userNeo4jRepository.findByUsername(resultFriendsOfFriends.get(i).getUsername());
-                Set<String> friendOfFriendGameNames = friendOfFriendWishlist.stream()
-                        .map(GameNeo4j::getName)
-                        .collect(Collectors.toSet());
-
-                // Compare the two sets and count the common games
-                long commonGamesCount = addedGames.stream()
-                        .map(GameNeo4j::getName)
-                        .filter(friendOfFriendGameNames::contains)
-                        .distinct()
-                        .count();
-
-                // If there are 5 or more common games, add the user to a userlist
-                if (commonGamesCount >= 5) {
-                    suggestedFriends.add(resultFriendsOfFriends.get(i));
-                }
+            if (suggestions.isEmpty()) {
+                suggestions = mostFollowedUsersFor(username);
             }
 
-            if (!suggestedFriends.isEmpty()) {
-                return suggestedFriends;
-            }
-            //System.out.println("suggestFriendsList empty");
-            return suggestedFriends;
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+            writeSuggestionsCache(cacheKey, suggestions, FRIENDS_CACHE_TTL);
+            return suggestions;
+        } catch (Exception e) {
+            log.error("Errore in getSuggestedFriends", e);
             return null;
         }
     }
 
+    // La classifica globale costa una scansione di tutte le relazioni FOLLOW (~1,5s sul dataset
+    // completo) ed e' identica per tutti: la si calcola una volta ogni POPULAR_CACHE_TTL e si
+    // personalizza il risultato scartando l'utente stesso e chi gia' segue.
+    private List<SuggestedUserDTO> mostFollowedUsersFor(String username) {
+        Set<String> excluded =
+                userNeo4jRepository.findFollowedUsers(username).stream()
+                        .map(UserNeo4j::getUsername)
+                        .collect(Collectors.toCollection(HashSet::new));
+        excluded.add(username);
 
+        return cachedMostFollowedUsers().stream()
+                .filter(u -> !excluded.contains(u.getUsername()))
+                .limit(SUGGESTIONS_LIMIT)
+                .toList();
+    }
 
+    private List<SuggestedUserDTO> cachedMostFollowedUsers() {
+        List<SuggestedUserDTO> cached = readSuggestionsCache(POPULAR_CACHE_KEY);
+        if (cached != null) {
+            return cached;
+        }
+        // il pool e' piu ampio del numero di suggerimenti mostrati, cosi resta abbastanza margine
+        // dopo aver scartato gli utenti gia' seguiti
+        List<SuggestedUserDTO> fresh = userNeo4jRepository.findMostFollowedUsers(POPULAR_POOL_SIZE);
+        writeSuggestionsCache(POPULAR_CACHE_KEY, fresh, POPULAR_CACHE_TTL);
+        return fresh;
+    }
+
+    // La cache su Redis e' un'ottimizzazione, non la fonte di verita' (che resta Neo4j): se Redis
+    // non e' raggiungibile i suggerimenti devono comunque funzionare, solo un po' piu lenti.
+    @SuppressWarnings("unchecked")
+    private List<SuggestedUserDTO> readSuggestionsCache(String key) {
+        try {
+            Object cached = redisTemplate.opsForValue().get(key);
+            return cached == null ? null : (List<SuggestedUserDTO>) cached;
+        } catch (Exception e) {
+            log.warn("Redis non raggiungibile in lettura per la chiave {}", key, e);
+            return null;
+        }
+    }
+
+    private void writeSuggestionsCache(String key, List<SuggestedUserDTO> value, Duration ttl) {
+        try {
+            redisTemplate.opsForValue().set(key, value, ttl);
+        } catch (Exception e) {
+            log.warn("Redis non raggiungibile in scrittura per la chiave {}", key, e);
+        }
+    }
+
+    @Override
+    public List<UserNeo4j> searchUsers(String query, String currentUsername) {
+        try {
+            return userNeo4jRepository.searchUsers(query, currentUsername);
+        } catch (Exception e) {
+            log.error("Errore in searchUsers", e);
+            return null;
+        }
+    }
 
     @Override
     public Boolean addLikeToReview(String username, String id) {
         try {
-            Boolean likePresent=userNeo4jRepository.addLikeToReview(username,id);
-            //System.out.println(likePresent);
-            if(likePresent != null && !likePresent.booleanValue()){
-                //se il like non è presente si aggiunge anche su mongoDB
-                Optional<Review> optionalReview=reviewRepository.findById(id);
-                if(optionalReview.isPresent()){
+            Boolean likePresent = userNeo4jRepository.addLikeToReview(username, id);
+            if (likePresent != null && !likePresent.booleanValue()) {
+                // se il like non è presente si aggiunge anche su mongoDB
+                Optional<Review> optionalReview = reviewRepository.findById(id);
+                if (optionalReview.isPresent()) {
                     Review review = optionalReview.get();
-                    int modifiedLikeCount=review.getLikeCount();
-                    modifiedLikeCount+=1;
+                    int modifiedLikeCount = review.getLikeCount();
+                    modifiedLikeCount += 1;
                     review.setLikeCount(modifiedLikeCount);
                     reviewRepository.save(review);
 
-                    //check if in the embedded review list of the game the likeCount of this review
-                    //is greater of the likeCount of the embedded review with minor likeCount, if yes
-                    //we check if the review is not inside the embedded list,if yes we update the review from scratch
+                    // check if in the embedded review list of the game the likeCount of this review
+                    // is greater of the likeCount of the embedded review with minor likeCount, if
+                    // yes
+                    // we check if the review is not inside the embedded list,if yes we update the
+                    // review from scratch
                     // otherwise if the review is inside the embedded review
-                    //list we update the embedded review list with another function that operate only with the embedded
-                    //reviews wich we have already retrieved in one read when we retrieve the game
+                    // list we update the embedded review list with another function that operate
+                    // only with the embedded
+                    // reviews wich we have already retrieved in one read when we retrieve the game
 
-                    //now do it step by step
-                    //1)retrieve the game to retrieve the list of embedded review
-                    List<Game> game=gameRepository.findByName(review.getTitle());
-                    List<Review> embeddedReviews=game.get(0).getReviews();
+                    // now do it step by step
+                    // 1)retrieve the game to retrieve the list of embedded review
+                    List<Game> game = gameRepository.findByName(review.getTitle());
+                    List<Review> embeddedReviews = game.get(0).getReviews();
 
-                    //2)retrieve the embedded review with least likeCount between the embedded reviews
+                    // 2)retrieve the embedded review with least likeCount between the embedded
+                    // reviews
                     Review reviewWithLeastLikes = null;
 
                     // Iterate through the embedded reviews
                     for (Review compareReview : embeddedReviews) {
-                        // Check if reviewWithLeastLikes is null or if the current review has fewer likes
-                        if (reviewWithLeastLikes == null || compareReview.getLikeCount() < reviewWithLeastLikes.getLikeCount()) {
+                        // Check if reviewWithLeastLikes is null or if the current review has fewer
+                        // likes
+                        if (reviewWithLeastLikes == null
+                                || compareReview.getLikeCount()
+                                        < reviewWithLeastLikes.getLikeCount()) {
                             // Update reviewWithLeastLikes to the current review
                             reviewWithLeastLikes = compareReview;
                         }
                     }
 
-                    //3)check if the review.likeCount i considered is > reviewWithLeastLikes.likecCount()
-                    if(review.getLikeCount()>reviewWithLeastLikes.getLikeCount()){
-                        boolean fuondEqualReview=false;
-                        //4) now check if the review is already inside the embeddedReview
-                        for(Review compareReview : embeddedReviews){
-                            if(review.getId().equals(compareReview.getId())){
-                                //if the review is already embedded we modify the also the likeCount in the embedded review
-                                int embeddedLikeCount=compareReview.getLikeCount();
-                                compareReview.setLikeCount(embeddedLikeCount+1);
+                    // 3)check if the review.likeCount i considered is >
+                    // reviewWithLeastLikes.likecCount()
+                    if (review.getLikeCount() > reviewWithLeastLikes.getLikeCount()) {
+                        boolean fuondEqualReview = false;
+                        // 4) now check if the review is already inside the embeddedReview
+                        for (Review compareReview : embeddedReviews) {
+                            if (review.getId().equals(compareReview.getId())) {
+                                // if the review is already embedded we modify the also the
+                                // likeCount in the embedded review
+                                int embeddedLikeCount = compareReview.getLikeCount();
+                                compareReview.setLikeCount(embeddedLikeCount + 1);
                                 gameRepository.save(game.get(0));
-                                fuondEqualReview=true;
+                                fuondEqualReview = true;
                             }
                         }
 
-                        if(fuondEqualReview){
-                            //5) if yes, run the function that act only inside the embedded review(DEFINE THIS FUNCTION)
+                        if (fuondEqualReview) {
+                            // 5) if yes, run the function that act only inside the embedded
+                            // review(DEFINE THIS FUNCTION)
                             gameService.updateGameEmbeddedReview(game.get(0));
-                            System.out.println("update embedded reviews");
+                            log.debug("update embedded reviews");
 
-                        }else if(!fuondEqualReview){
-                            //6) if not we update from scratch considering all the reviews of that game
+                        } else if (!fuondEqualReview) {
+                            // 6) if not we update from scratch considering all the reviews of that
+                            // game
 
-                            gameService.updateGameReviewFromScratch(game.get(0),20);
-                            System.out.println("update reviews from scratch");
+                            gameService.updateGameReviewFromScratch(game.get(0), 20);
+                            log.debug("update reviews from scratch");
                         }
                     }
 
-
-
-
-
-                    //return true if the review it is created
+                    // return true if the review it is created
                     return true;
-                }else{
-                    //if there are some problems we delete the link
-                    userNeo4jRepository.deleteLikeFromReview(username,id);
+                } else {
+                    // if there are some problems we delete the link
+                    userNeo4jRepository.deleteLikeFromReview(username, id);
                     return false;
                 }
-
-
             }
             return false;
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            log.error("Errore in addLikeToReview", e);
             return null;
-
         }
-
-
     }
 
+    @Override
+    public Boolean removeLikeFromReview(String username, String id) {
+        try {
+            Long removed = userNeo4jRepository.removeLikeFromReview(username, id);
+            if (removed == null || removed == 0) {
+                // l'utente non aveva messo like: non si tocca il likeCount
+                return false;
+            }
 
+            // il like c'era davvero, quindi si decrementa anche su mongoDB
+            Optional<Review> optionalReview = reviewRepository.findById(id);
+            if (optionalReview.isEmpty()) {
+                return false;
+            }
+
+            Review review = optionalReview.get();
+            review.setLikeCount(Math.max(0, review.getLikeCount() - 1));
+            reviewRepository.save(review);
+
+            // se la review e' tra quelle embedded nel gioco si aggiorna anche li' e si riordina.
+            // un like in meno non puo' far entrare la review tra le top, quindi non serve
+            // ricalcolare la lista da zero
+            List<Game> game = gameRepository.findByName(review.getTitle());
+            if (game.isEmpty() || game.get(0).getReviews() == null) {
+                return true;
+            }
+
+            for (Review embeddedReview : game.get(0).getReviews()) {
+                if (review.getId().equals(embeddedReview.getId())) {
+                    embeddedReview.setLikeCount(review.getLikeCount());
+                    gameService.updateGameEmbeddedReview(game.get(0));
+                    log.debug("update embedded reviews after unlike");
+                    break;
+                }
+            }
+
+            return true;
+        } catch (Exception e) {
+            log.error("Errore in removeLikeFromReview", e);
+            return null;
+        }
+    }
 
     @Override
-    public long countUserDocument(){
+    public List<String> getLikedReviewIds(String username) {
+        try {
+            return userNeo4jRepository.findLikedReviewIds(username);
+        } catch (Exception e) {
+            log.error("Errore in getLikedReviewIds", e);
+            return Collections.emptyList();
+        }
+    }
+
+    @Override
+    public long countUserDocument() {
         try {
             return loginRepository.count();
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            log.error("Errore in countUserDocument", e);
             return -1;
         }
     }
@@ -335,31 +562,34 @@ public class UserNeo4jService implements IUserNeo4jService {
 
         try {
 
-            if(userNeo4jRepository.getUser(followedUsername)!=null){
+            // check both sides of the relationship exist in the graph before linking them
+            if (userNeo4jRepository.getUser(followerUsername) != null
+                    && userNeo4jRepository.getUser(followedUsername) != null) {
                 userNeo4jRepository.followUser(followerUsername, followedUsername);
                 return true;
             }
             return false;
 
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            log.error("Errore in followUser", e);
             return null;
         }
     }
+
     @Override
     public Boolean unfollowUser(String followerUsername, String followedUsername) {
         try {
-            List<UserNeo4j> userNeo4jList=userNeo4jRepository.findFollowedUsers(followerUsername);
-            for(UserNeo4j userNeo4j:userNeo4jList){
-                if(userNeo4j.getUsername().equals(followedUsername)){
+            List<UserNeo4j> userNeo4jList = userNeo4jRepository.findFollowedUsers(followerUsername);
+            for (UserNeo4j userNeo4j : userNeo4jList) {
+                if (userNeo4j.getUsername().equals(followedUsername)) {
                     userNeo4jRepository.unfollowUser(followerUsername, followedUsername);
                     return true;
                 }
             }
             return false;
 
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            log.error("Errore in unfollowUser", e);
             return null;
         }
     }
@@ -367,40 +597,45 @@ public class UserNeo4jService implements IUserNeo4jService {
     public void removeUser(String username) {
         userNeo4jRepository.removeUser(username);
     }
-    public ResponseEntity<String> addUser(String id, String username){
+
+    public ResponseEntity<String> addUser(String id, String username) {
         try {
             userNeo4jRepository.addUser(id, username);
             return new ResponseEntity<>("successfully registered user", HttpStatus.CREATED);
+        } catch (Exception e) {
+            log.error("Errore in addUser", e);
+            return new ResponseEntity<>(
+                    "Error in interaction with Neo4j" + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        catch (Exception e) {
-            return new ResponseEntity<>("Error in interaction with Neo4j" + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
     }
-    public UserNeo4j getUser(String username){
 
-        try{
-            UserNeo4j userNeo4j= userNeo4jRepository.getUser(username);
-            if(userNeo4j!=null){
+    public UserNeo4j getUser(String username) {
+
+        try {
+            UserNeo4j userNeo4j = userNeo4jRepository.getUser(username);
+            if (userNeo4j != null) {
                 return userNeo4j;
-            }else {
-                UserNeo4j userNeo4j1=new UserNeo4j();
+            } else {
+                UserNeo4j userNeo4j1 = new UserNeo4j();
                 userNeo4j1.setId("null");
                 return userNeo4j1;
             }
-        }catch (Exception e){
-            System.out.println(e.getMessage());
+        } catch (Exception e) {
+            log.error("Errore in getUser", e);
             return null;
         }
     }
-    public ResponseEntity<String> updateUser(String username, String newUsername){
+
+    public ResponseEntity<String> updateUser(String username, String newUsername) {
         try {
             userNeo4jRepository.updateUser(username, newUsername);
             return new ResponseEntity<>("username correctly updated", HttpStatus.OK);
-        }
-        catch (Exception e) {
-            return new ResponseEntity<>("error in updating username in neo4j: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (Exception e) {
+            log.error("Errore in updateUser", e);
+            return new ResponseEntity<>(
+                    "error in updating username in neo4j: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
 }

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/stop-lint-check.sh",
+            "timeout": 120,
+            "statusMessage": "Formatting + linting changed Java files (Spotless/Checkstyle)..."
+          }
+        ]
+      }
+    ]
+  }
+}
