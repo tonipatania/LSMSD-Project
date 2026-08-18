@@ -2,7 +2,6 @@ package it.unipi.lsmsd.gamehub.DTO;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -16,5 +15,4 @@ public class ReviewDTO {
     private int userScore;
     private String comment;
     private String username;
-
 }

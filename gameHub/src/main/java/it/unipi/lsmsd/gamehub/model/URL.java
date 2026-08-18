@@ -13,13 +13,16 @@ import org.springframework.data.mongodb.core.mapping.Field;
 public class URL {
     @Field("Website")
     private String website;
+
     @Field("Header image")
     private String headerImage;
+
     @Field("Support url")
     private String supportUrl;
+
     @Field("Support email")
     private String supportEmaill;
+
     @Field("Screenshots")
     private String screenshots;
-
 }

@@ -9,8 +9,7 @@ import org.springframework.data.annotation.Id;
 @Setter
 @ToString
 public class ReviewDTOAggregation2 {
-    @Id
-    private String Title;
+    @Id private String Title;
     private int Userscore;
     private int count;
 }
