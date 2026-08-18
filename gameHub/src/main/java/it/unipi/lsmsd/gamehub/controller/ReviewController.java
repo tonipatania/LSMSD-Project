@@ -84,7 +84,7 @@ public class ReviewController {
         log.error(
                 "Creazione della review {} fallita in Neo4j, rollback del documento Mongo",
                 review.getId());
-        return review2Service.deleteReview(reviewDTO.getId());
+        return review2Service.deleteReview(review.getId());
     }
 
     @DeleteMapping("/reviewSelected/delete/{userId}")
