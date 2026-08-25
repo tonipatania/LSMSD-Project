@@ -42,13 +42,6 @@ class UserControllerTest {
     @MockBean private JwtService jwtService;
 
     @Test
-    void syncUser_alwaysDelegatesAndReturnsOk() throws Exception {
-        mockMvc.perform(post("/user/sync")).andExpect(status().isOk());
-
-        verify(userNeo4jService).SyncUser();
-    }
-
-    @Test
     void getUserWishlist_serviceReturnsNull_returnsInternalServerError() throws Exception {
         when(userNeo4jService.getUserWishlist("Lunark", null)).thenReturn(null);
 

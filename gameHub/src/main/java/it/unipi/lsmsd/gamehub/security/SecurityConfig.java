@@ -57,7 +57,7 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/login", "/signup")
                                         .permitAll()
-                                        .requestMatchers("/user/sync", "/user/loadgames")
+                                        .requestMatchers("/user/loadgames")
                                         .hasRole("ADMIN")
                                         .anyRequest()
                                         .authenticated())

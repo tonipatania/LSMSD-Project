@@ -9,9 +9,11 @@ import it.unipi.lsmsd.gamehub.support.E2ETestSupport;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-// Follow/wishlist over real HTTP, plus the admin-sync endpoints - the only two endpoints in this
+// Follow/wishlist over real HTTP, plus the admin loadgames endpoint - the only endpoint in this
 // app gated by a real hasRole("ADMIN") check at the Security layer (every other "admin" endpoint
-// is only an application-level Mongo User.role lookup, see backend-e2e-tests).
+// is only an application-level Mongo User.role lookup, see backend-e2e-tests). /user/sync was
+// removed: it let anyone holding an ADMIN token trigger a full Mongo->Neo4j user resync on demand,
+// an unbounded-cost operation with no place in a production attack surface.
 class SocialGraphJourneyE2EIT extends E2ETestSupport {
 
     private void registerUser(String username) {
@@ -23,13 +25,6 @@ class SocialGraphJourneyE2EIT extends E2ETestSupport {
                 .post("/signup")
                 .then()
                 .statusCode(201);
-    }
-
-    @Test
-    void userSync_requiresRealAdminRoleClaim_notJustAnyAuthenticatedUser() {
-        anonymous().post("/user/sync").then().statusCode(401);
-        authenticatedAs("someone", "USER").post("/user/sync").then().statusCode(403);
-        authenticatedAs("someone", "ADMIN").post("/user/sync").then().statusCode(200);
     }
 
     @Test

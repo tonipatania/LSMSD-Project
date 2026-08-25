@@ -68,11 +68,10 @@ Because the two stores aren't transactional together, write operations that touc
 
 See `LoginController.registration()` (rolls back the Mongo user if the Neo4j node creation fails) and `UserController.updateUser()` (rolls back the Mongo username if the Neo4j rename fails) for the canonical examples. When adding a new endpoint that mutates an entity present in both stores, follow this same pattern.
 
-Bulk (re)population of the Neo4j graph from Mongo is done via admin-only endpoints, not on every write:
-- `POST /user/sync` — copies all Mongo users into Neo4j (`UserNeo4jService.SyncUser`).
-- `POST /user/loadgames` — copies all Mongo games into Neo4j (`UserNeo4jService.loadGames`).
+Bulk (re)population of the Neo4j graph from Mongo is done via an admin-only endpoint, not on every write:
+- `POST /user/loadgames` — copies all Mongo games into Neo4j (`UserNeo4jService.loadGames`), requires `ROLE_ADMIN` (enforced in `SecurityConfig`), uses `ModelMapper` for the Mongo→Neo4j field copy.
 
-Both require `ROLE_ADMIN` (enforced in `SecurityConfig`) and use `ModelMapper` for the Mongo→Neo4j field copy.
+`UserNeo4jService.SyncUser` (the Mongo→Neo4j user-copy counterpart) is no longer exposed over HTTP — `POST /user/sync` let anyone with an ADMIN token trigger an unbounded full-graph resync on demand, an unacceptable production attack surface, so the endpoint was removed from `UserController`. The method itself still exists and is covered by `UserNeo4jServiceIT`; wire it up again only behind something safer than a plain public endpoint (an internal-only route, a scheduled job, a CLI/admin tool) if bulk user resync is needed again.
 
 `Neo4jIndexInitializer` (an `ApplicationRunner`) creates Neo4j indexes/constraints at startup — a uniqueness constraint on `UserNeo4j.username` (falling back to a plain index if the constraint can't be created, e.g. due to existing duplicates) plus lookup indexes on `id`/`name` for all three Neo4j node types.
 
@@ -84,7 +83,7 @@ DTOs (`DTO/`) are used both for request bodies (`LoginDTO`, `RegistrationDTO`) a
 
 ## Auth
 
-Stateless JWT auth via `JwtAuthenticationFilter` (reads `Authorization: Bearer <token>`, populates `SecurityContextHolder`) + `JwtService` (issue/parse). `SecurityConfig` disables CSRF and sessions, permits `/login`, `/signup`, and CORS preflight (`OPTIONS`) without auth, requires `ROLE_ADMIN` for `/user/sync` and `/user/loadgames`, and requires authentication for everything else. Passwords are hashed with `BCryptPasswordEncoder`.
+Stateless JWT auth via `JwtAuthenticationFilter` (reads `Authorization: Bearer <token>`, populates `SecurityContextHolder`) + `JwtService` (issue/parse). `SecurityConfig` disables CSRF and sessions, permits `/login`, `/signup`, and CORS preflight (`OPTIONS`) without auth, requires `ROLE_ADMIN` for `/user/loadgames`, and requires authentication for everything else. Passwords are hashed with `BCryptPasswordEncoder`.
 
 ## Data model notes
 
