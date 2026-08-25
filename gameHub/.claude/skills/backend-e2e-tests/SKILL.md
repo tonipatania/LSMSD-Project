@@ -61,9 +61,10 @@ assuming:
   `addGameToWishlist`, etc. return a "no-op" success-shaped response (not an error) if either side
   isn't already a `UserNeo4j`/`GameNeo4j` node - there's no cross-store validation that raises an
   error. A journey that does signup → follow-a-friend needs the friend to already be a `UserNeo4j`
-  node (seed it directly, or route the journey through `/user/sync` first) or the follow step will
-  silently "succeed" while doing nothing - assert the follow relationship actually landed (query
-  `neo4jClient`, or call `GET /user/followedUser`) rather than trusting the 200.
+  node - registering the friend through `/signup` creates it as a side effect (see
+  `LoginController.registration()`), or seed the node directly via `neo4jClient` - or the follow
+  step will silently "succeed" while doing nothing - assert the follow relationship actually landed
+  (query `neo4jClient`, or call `GET /user/followedUser`) rather than trusting the 200.
 - **The `{userId}`-suffixed "admin" endpoints are not gated by `ROLE_ADMIN`.** Endpoints like
   `POST /game/create/{userId}` or `DELETE /review/reviewSelected/delete/{userId}` only require
   *any* authenticated JWT at the Spring Security layer; the actual admin check is an
@@ -71,9 +72,10 @@ assuming:
   segment, requiring its `role` field to be non-null. The JWT's own subject/role claims are
   irrelevant to this check. To exercise the admin-allowed branch, seed a Mongo `User` with a
   non-null `role` and use *that user's Mongo id* as `{userId}` - not the JWT subject. Only
-  `POST /user/sync` and `POST /user/loadgames` are real `hasRole("ADMIN")` checks at the Security
-  layer (test those by minting a token with `authenticatedAs(username, "ADMIN")` vs `"USER"` and
-  asserting 200 vs 403).
+  `POST /user/loadgames` is a real `hasRole("ADMIN")` check at the Security layer (test it by
+  minting a token with `authenticatedAs(username, "ADMIN")` vs `"USER"` and asserting 200 vs 403).
+  `/user/sync` used to be the other one but was removed - it let anyone with an ADMIN token trigger
+  an unbounded full Mongo→Neo4j user resync on demand, which had no place in a production endpoint.
 
 ## Before calling a task done
 

@@ -23,13 +23,6 @@ public class UserController {
     @Autowired private IUserNeo4jService userNeo4jService;
     @Autowired private ILoginService iLoginService;
 
-    // to load user from mongo to neo4j
-    @PostMapping("/sync")
-    public ResponseEntity<String> syncUser() {
-        userNeo4jService.SyncUser();
-        return ResponseEntity.ok("Sincronizzazione completata");
-    }
-
     // to load games from mongo to neo4j
     @PostMapping("/loadgames")
     public ResponseEntity<String> reqGames() {
