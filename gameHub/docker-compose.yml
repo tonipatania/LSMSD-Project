@@ -1,0 +1,36 @@
+# Stack di sviluppo locale (facoltativo): sostituisce l'avvio manuale di
+# mongo_local/neo4j_local descritto in CLAUDE.md con `docker compose up -d`.
+# Non usato in produzione (li' si usano MongoDB Atlas / Neo4j Aura / Upstash Redis,
+# vedi render.yaml e .env.example).
+services:
+  mongo_local:
+    image: mongo:7.0
+    container_name: mongo_local
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_local_data:/data/db
+
+  neo4j_local:
+    image: neo4j:5.15
+    container_name: neo4j_local
+    environment:
+      NEO4J_AUTH: neo4j/elliejoel
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_local_data:/data
+
+  redis_local:
+    image: redis:7
+    container_name: redis_local
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_local_data:/data
+
+volumes:
+  mongo_local_data:
+  neo4j_local_data:
+  redis_local_data:
