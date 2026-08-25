@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: gamehub-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USERNAME
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_SSL
+        value: "true"
+      - key: REDIS_DATABASE
+        value: "0"
+      - key: GAMEHUB_JWT_SECRET
+        sync: false
+      - key: GAMEHUB_CORS_ORIGINS
+        sync: false

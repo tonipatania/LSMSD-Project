@@ -83,7 +83,7 @@ DTOs (`DTO/`) are used both for request bodies (`LoginDTO`, `RegistrationDTO`) a
 
 ## Auth
 
-Stateless JWT auth via `JwtAuthenticationFilter` (reads `Authorization: Bearer <token>`, populates `SecurityContextHolder`) + `JwtService` (issue/parse). `SecurityConfig` disables CSRF and sessions, permits `/login`, `/signup`, and CORS preflight (`OPTIONS`) without auth, requires `ROLE_ADMIN` for `/user/loadgames`, and requires authentication for everything else. Passwords are hashed with `BCryptPasswordEncoder`.
+Stateless JWT auth via `JwtAuthenticationFilter` (reads `Authorization: Bearer <token>`, populates `SecurityContextHolder`) + `JwtService` (issue/parse). `SecurityConfig` disables CSRF and sessions, permits `/login`, `/signup`, `/actuator/health`, and CORS preflight (`OPTIONS`) without auth, requires `ROLE_ADMIN` for `/user/loadgames`, and requires authentication for everything else. Passwords are hashed with `BCryptPasswordEncoder`.
 
 ## Data model notes
 
