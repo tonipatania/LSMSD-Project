@@ -8,8 +8,11 @@ import static org.hamcrest.Matchers.not;
 import io.restassured.http.ContentType;
 import it.unipi.lsmsd.gamehub.DTO.LoginDTO;
 import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
+import it.unipi.lsmsd.gamehub.model.User;
 import it.unipi.lsmsd.gamehub.support.E2ETestSupport;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 
 // Drives signup -> login -> an authenticated call, purely over real HTTP, the way an actual
 // client would - see backend-e2e-tests for how this differs from the controller-level
@@ -19,7 +22,7 @@ class AuthJourneyE2EIT extends E2ETestSupport {
     @Test
     void signupThenLogin_returnsWorkingTokenUsableOnAProtectedEndpoint() {
         RegistrationDTO registration =
-                new RegistrationDTO("Mario", "Rossi", "mariorossi", "pwd123", "mario@test.it");
+                new RegistrationDTO("Mario", "Rossi", "mariorossi", "Passw0rd!", "mario@test.it");
 
         anonymous()
                 .contentType(ContentType.JSON)
@@ -28,10 +31,22 @@ class AuthJourneyE2EIT extends E2ETestSupport {
                 .then()
                 .statusCode(201);
 
+        // La registrazione lascia l'account non confermato: qui si simula il click sul link
+        // ricevuto via email leggendo il token direttamente da Mongo, dato che nei test non
+        // c'e' un vero server SMTP a cui accedere.
+        User registeredUser =
+                mongoTemplate.findOne(
+                        Query.query(Criteria.where("username").is("mariorossi")), User.class);
+        anonymous()
+                .queryParam("token", registeredUser.getVerificationToken())
+                .get("/confirm-email")
+                .then()
+                .statusCode(200);
+
         String token =
                 anonymous()
                         .contentType(ContentType.JSON)
-                        .body(new LoginDTO("mariorossi", "pwd123"))
+                        .body(new LoginDTO("mariorossi", "Passw0rd!"))
                         .post("/login")
                         .then()
                         .statusCode(200)
@@ -56,7 +71,7 @@ class AuthJourneyE2EIT extends E2ETestSupport {
     @Test
     void login_wrongPassword_returnsUnauthorizedWithoutToken() {
         RegistrationDTO registration =
-                new RegistrationDTO("Mario", "Rossi", "mariorossi", "pwd123", "mario@test.it");
+                new RegistrationDTO("Mario", "Rossi", "mariorossi", "Passw0rd!", "mario@test.it");
         anonymous().contentType(ContentType.JSON).body(registration).post("/signup");
 
         anonymous()

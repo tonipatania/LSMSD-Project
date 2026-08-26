@@ -6,12 +6,15 @@ import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
 import it.unipi.lsmsd.gamehub.model.User;
 import it.unipi.lsmsd.gamehub.repository.LoginRepository;
 import it.unipi.lsmsd.gamehub.security.JwtService;
+import it.unipi.lsmsd.gamehub.service.IEmailService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +30,11 @@ public class LoginService implements ILoginService {
 
     @Autowired private JwtService jwtService;
 
+    @Autowired private IEmailService emailService;
+
+    @Value("${gamehub.email-verification.expiration-ms}")
+    private long verificationExpirationMs;
+
     @Override
     public AuthResponse authenticate(LoginDTO loginDTO) {
         // retrieve value
@@ -36,6 +44,16 @@ public class LoginService implements ILoginService {
             User u = loginRepository.findByUsername(username);
             if (u == null || !matchesPassword(u, password)) {
                 return new AuthResponse(false, "Invalid username or password", null);
+            }
+            // enabled == null copre gli utenti del seed dataset, creati prima dell'introduzione
+            // della conferma via email: solo false (impostato esplicitamente in registrate())
+            // blocca il login.
+            if (Boolean.FALSE.equals(u.getEnabled())) {
+                return new AuthResponse(
+                        false,
+                        "Account non confermato: controlla la tua email per completare la"
+                                + " registrazione",
+                        null);
             }
 
             String token = jwtService.generateToken(u.getUsername(), resolveRole(u));
@@ -118,6 +136,9 @@ public class LoginService implements ILoginService {
             newUser.setUsername(username);
             newUser.setPassword(passwordEncoder.encode(password));
             newUser.setEmail(email);
+            // resta non confermato finche' non clicca il link ricevuto via email
+            // (sendVerificationEmail, chiamato dal controller dopo la creazione in Neo4j)
+            newUser.setEnabled(false);
 
             // Save the new user to the database
             loginRepository.save(newUser);
@@ -174,5 +195,53 @@ public class LoginService implements ILoginService {
                     "error in updating username in mongo: " + e.getMessage(),
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    @Override
+    public void sendVerificationEmail(String userId) {
+        Optional<User> optionalUser = loginRepository.findById(userId);
+        if (optionalUser.isEmpty()) {
+            log.warn("Impossibile inviare l'email di conferma: utente {} non trovato", userId);
+            return;
+        }
+        User user = optionalUser.get();
+        String token = UUID.randomUUID().toString();
+        user.setVerificationToken(token);
+        user.setVerificationTokenExpiry(System.currentTimeMillis() + verificationExpirationMs);
+        loginRepository.save(user);
+
+        // Un fallimento dell'invio non deve far fallire la registrazione, gia' completata su
+        // Mongo e Neo4j: viene solo loggato.
+        try {
+            emailService.sendVerificationEmail(user.getEmail(), user.getUsername(), token);
+        } catch (Exception e) {
+            log.error("Invio dell'email di conferma fallito per {}", user.getUsername(), e);
+        }
+    }
+
+    @Override
+    public ResponseEntity<String> confirmEmail(String token) {
+        User user = loginRepository.findByVerificationToken(token);
+        if (user == null) {
+            return new ResponseEntity<>("Link di conferma non valido", HttpStatus.BAD_REQUEST);
+        }
+        if (Boolean.TRUE.equals(user.getEnabled())) {
+            return new ResponseEntity<>("Account gia' confermato", HttpStatus.OK);
+        }
+        if (user.getVerificationTokenExpiry() == null
+                || user.getVerificationTokenExpiry() < System.currentTimeMillis()) {
+            return new ResponseEntity<>(
+                    "Link di conferma scaduto, prova a registrarti di nuovo", HttpStatus.GONE);
+        }
+
+        // Il token NON viene invalidato qui apposta: un client email che pre-carica il link per
+        // scansionarlo (es. Microsoft Safe Links, comune nelle caselle aziendali) o un doppio
+        // click dell'utente arriverebbero altrimenti a un secondo /confirm-email con lo stesso
+        // token gia' consumato, e senza il token ancora presente il controllo "gia' confermato"
+        // sopra non potrebbe piu' trovare l'utente: si vedrebbero un falso "link non valido"
+        // anche se il primo confirm e' andato a buon fine.
+        user.setEnabled(true);
+        loginRepository.save(user);
+        return new ResponseEntity<>("Account confermato con successo", HttpStatus.OK);
     }
 }

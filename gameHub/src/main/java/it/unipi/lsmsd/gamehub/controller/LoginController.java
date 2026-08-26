@@ -5,10 +5,13 @@ import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,7 +27,7 @@ public class LoginController {
         "password": "jrmag6azycv"
     }*/
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginDTO loginDTO) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginDTO loginDTO) {
         AuthResponse authResponse = loginService.authenticate(loginDTO);
         if (authResponse.isSuccess()) {
             log.info("Login riuscito per l'utente {}", loginDTO.getUsername());
@@ -44,7 +47,8 @@ public class LoginController {
             "password": "prova"
     }*/
     @PostMapping("/signup")
-    public ResponseEntity<String> registration(@RequestBody RegistrationDTO registrationDTO) {
+    public ResponseEntity<String> registration(
+            @Valid @RequestBody RegistrationDTO registrationDTO) {
         // registro su mongo
         ResponseEntity<String> responseEntity = loginService.registrate(registrationDTO);
         if (responseEntity.getStatusCode() != HttpStatus.CREATED) {
@@ -58,6 +62,7 @@ public class LoginController {
         ResponseEntity<String> response =
                 userNeo4jService.addUser(responseEntity.getBody(), registrationDTO.getUsername());
         if (response.getStatusCode() == HttpStatus.CREATED) {
+            loginService.sendVerificationEmail(responseEntity.getBody());
             log.info("Registrazione completata per l'utente {}", registrationDTO.getUsername());
             return response;
         }
@@ -71,5 +76,20 @@ public class LoginController {
         loginService.removeUser(responseEntity.getBody());
         return new ResponseEntity<>(
                 "Registrazione non riuscita, riprova piu tardi", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @GetMapping("/confirm-email")
+    public ResponseEntity<String> confirmEmail(@RequestParam String token) {
+        return loginService.confirmEmail(token);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<String> handleValidationException(MethodArgumentNotValidException ex) {
+        String message =
+                ex.getBindingResult().getFieldErrors().stream()
+                        .findFirst()
+                        .map(FieldError::getDefaultMessage)
+                        .orElse("Dati non validi");
+        return new ResponseEntity<>(message, HttpStatus.BAD_REQUEST);
     }
 }

@@ -1,6 +1,7 @@
 package it.unipi.lsmsd.gamehub.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -33,7 +34,7 @@ class LoginControllerIT extends IntegrationTestSupport {
     @Autowired private PasswordEncoder passwordEncoder;
 
     private RegistrationDTO registrationDTO() {
-        return new RegistrationDTO("Mario", "Rossi", "mariorossi", "pwd123", "mario@test.it");
+        return new RegistrationDTO("Mario", "Rossi", "mariorossi", "Passw0rd!", "mario@test.it");
     }
 
     private Optional<Map<String, Object>> findNeo4jUserByUsername(String username) {
@@ -56,11 +57,73 @@ class LoginControllerIT extends IntegrationTestSupport {
                 mongoTemplate.findOne(
                         Query.query(Criteria.where("username").is("mariorossi")), User.class);
         assertThat(savedUser).isNotNull();
-        assertThat(passwordEncoder.matches("pwd123", savedUser.getPassword())).isTrue();
+        assertThat(passwordEncoder.matches("Passw0rd!", savedUser.getPassword())).isTrue();
+        assertThat(savedUser.getEnabled()).isFalse();
+        assertThat(savedUser.getVerificationToken()).isNotBlank();
 
         Optional<Map<String, Object>> neo4jUser = findNeo4jUserByUsername("mariorossi");
         assertThat(neo4jUser).isPresent();
         assertThat(neo4jUser.get()).containsEntry("id", savedUser.getId());
+    }
+
+    @Test
+    void login_beforeEmailConfirmation_isRejected() throws Exception {
+        mockMvc.perform(
+                post("/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registrationDTO())))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(
+                        post("/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new LoginDTO("mariorossi", "Passw0rd!"))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void confirmEmail_validToken_enablesAccountAndAllowsLogin() throws Exception {
+        mockMvc.perform(
+                post("/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registrationDTO())))
+                .andExpect(status().isCreated());
+
+        User savedUser =
+                mongoTemplate.findOne(
+                        Query.query(Criteria.where("username").is("mariorossi")), User.class);
+        assertThat(savedUser).isNotNull();
+        String token = savedUser.getVerificationToken();
+        assertThat(token).isNotBlank();
+
+        mockMvc.perform(get("/confirm-email").param("token", token)).andExpect(status().isOk());
+
+        User confirmedUser = mongoTemplate.findById(savedUser.getId(), User.class);
+        assertThat(confirmedUser).isNotNull();
+        assertThat(confirmedUser.getEnabled()).isTrue();
+
+        // Un secondo hit con lo stesso token (doppio click, prefetch di uno scanner email) deve
+        // restare un successo "gia' confermato", non ridiventare un "link non valido".
+        mockMvc.perform(get("/confirm-email").param("token", token)).andExpect(status().isOk());
+
+        mockMvc.perform(
+                        post("/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new LoginDTO("mariorossi", "Passw0rd!"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.token").isNotEmpty());
+    }
+
+    @Test
+    void confirmEmail_invalidToken_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/confirm-email").param("token", "not-a-real-token"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -89,7 +152,17 @@ class LoginControllerIT extends IntegrationTestSupport {
     @Test
     void login_legacyPlaintextPasswordMatches_migratesToBcryptAndReturnsToken() throws Exception {
         User user =
-                new User(null, "Lunark", "Name", "Surname", "plaintextpwd", "lunark@test.it", null);
+                new User(
+                        null,
+                        "Lunark",
+                        "Name",
+                        "Surname",
+                        "plaintextpwd",
+                        "lunark@test.it",
+                        null,
+                        true,
+                        null,
+                        null);
         mongoTemplate.save(user);
 
         mockMvc.perform(
@@ -118,6 +191,9 @@ class LoginControllerIT extends IntegrationTestSupport {
                         "Surname",
                         passwordEncoder.encode("correct"),
                         "lunark@test.it",
+                        null,
+                        true,
+                        null,
                         null);
         mongoTemplate.save(user);
 

@@ -60,7 +60,7 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                                         .permitAll()
-                                        .requestMatchers("/login", "/signup")
+                                        .requestMatchers("/login", "/signup", "/confirm-email")
                                         .permitAll()
                                         .requestMatchers("/actuator/health")
                                         .permitAll()

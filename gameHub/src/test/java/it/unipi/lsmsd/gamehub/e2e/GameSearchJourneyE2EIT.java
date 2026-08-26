@@ -33,7 +33,7 @@ class GameSearchJourneyE2EIT extends E2ETestSupport {
 
         anonymous()
                 .contentType(ContentType.JSON)
-                .body(new RegistrationDTO("Kai", "Stlin", "Kaistlin", "pwd123", "kai@test.it"))
+                .body(new RegistrationDTO("Kai", "Stlin", "Kaistlin", "Passw0rd!", "kai@test.it"))
                 .post("/signup")
                 .then()
                 .statusCode(201);
@@ -57,7 +57,7 @@ class GameSearchJourneyE2EIT extends E2ETestSupport {
 
         anonymous()
                 .contentType(ContentType.JSON)
-                .body(new RegistrationDTO("Kai", "Stlin", "Kaistlin", "pwd123", "kai@test.it"))
+                .body(new RegistrationDTO("Kai", "Stlin", "Kaistlin", "Passw0rd!", "kai@test.it"))
                 .post("/signup")
                 .then()
                 .statusCode(201);
