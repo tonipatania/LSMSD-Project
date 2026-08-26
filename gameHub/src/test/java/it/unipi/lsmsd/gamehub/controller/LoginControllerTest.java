@@ -74,8 +74,32 @@ class LoginControllerTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void login_passwordOver32Characters_returnsBadRequestWithoutCallingService() throws Exception {
+        mockMvc.perform(
+                        post("/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new LoginDTO("Lunark", "x".repeat(33)))))
+                .andExpect(status().isBadRequest());
+
+        verify(loginService, never()).authenticate(any(LoginDTO.class));
+    }
+
+    @Test
+    void login_blankUsername_returnsBadRequest() throws Exception {
+        mockMvc.perform(
+                        post("/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(new LoginDTO("", "pwd"))))
+                .andExpect(status().isBadRequest());
+
+        verify(loginService, never()).authenticate(any(LoginDTO.class));
+    }
+
     private RegistrationDTO registrationDTO() {
-        return new RegistrationDTO("Mario", "Rossi", "mariorossi", "pwd123", "mario@test.it");
+        return new RegistrationDTO("Mario", "Rossi", "mariorossi", "Passw0rd!", "mario@test.it");
     }
 
     @Test
@@ -90,6 +114,39 @@ class LoginControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(registrationDTO())))
                 .andExpect(status().isCreated());
+
+        verify(loginService).sendVerificationEmail("id1");
+    }
+
+    @Test
+    void registration_passwordMissingUppercaseAndSpecialChar_returnsBadRequest()
+            throws Exception {
+        RegistrationDTO weakPassword =
+                new RegistrationDTO(
+                        "Mario", "Rossi", "mariorossi", "weakpassword", "mario@test.it");
+
+        mockMvc.perform(
+                        post("/signup")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(weakPassword)))
+                .andExpect(status().isBadRequest());
+
+        verify(loginService, never()).registrate(any(RegistrationDTO.class));
+    }
+
+    @Test
+    void registration_passwordOver32Characters_returnsBadRequest() throws Exception {
+        RegistrationDTO tooLong =
+                new RegistrationDTO(
+                        "Mario", "Rossi", "mariorossi", "Aa1!" + "x".repeat(30), "mario@test.it");
+
+        mockMvc.perform(
+                        post("/signup")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(tooLong)))
+                .andExpect(status().isBadRequest());
+
+        verify(loginService, never()).registrate(any(RegistrationDTO.class));
     }
 
     @Test

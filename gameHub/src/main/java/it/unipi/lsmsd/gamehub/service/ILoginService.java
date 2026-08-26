@@ -15,4 +15,8 @@ public interface ILoginService {
     public ResponseEntity<String> removeUser(String userId);
 
     public ResponseEntity<String> updateUser(String username, String newUsername);
+
+    public void sendVerificationEmail(String userId);
+
+    public ResponseEntity<String> confirmEmail(String token);
 }

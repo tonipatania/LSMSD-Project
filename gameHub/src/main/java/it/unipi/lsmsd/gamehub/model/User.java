@@ -26,4 +26,13 @@ public class User {
     private String email;
 
     private String role;
+
+    // Boolean (non boolean) apposta: i documenti del seed dataset precedenti a questa feature
+    // non hanno il campo, che quindi deserializza a null. null viene trattato come "confermato"
+    // in LoginService.authenticate, cosi' gli account gia' esistenti restano utilizzabili - stessa
+    // logica di compatibilita' gia' usata per la migrazione lazy delle password in chiaro.
+    private Boolean enabled;
+
+    private String verificationToken;
+    private Long verificationTokenExpiry;
 }

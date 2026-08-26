@@ -29,7 +29,7 @@ class ReviewJourneyE2EIT extends E2ETestSupport {
         seedGame();
         anonymous()
                 .contentType(ContentType.JSON)
-                .body(new RegistrationDTO("Kai", "Stlin", "Kaistlin", "pwd123", "kai@test.it"))
+                .body(new RegistrationDTO("Kai", "Stlin", "Kaistlin", "Passw0rd!", "kai@test.it"))
                 .post("/signup")
                 .then()
                 .statusCode(201);

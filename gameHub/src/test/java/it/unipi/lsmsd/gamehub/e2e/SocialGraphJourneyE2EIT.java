@@ -21,7 +21,7 @@ class SocialGraphJourneyE2EIT extends E2ETestSupport {
                 .contentType(ContentType.JSON)
                 .body(
                         new RegistrationDTO(
-                                username, username, username, "pwd123", username + "@test.it"))
+                                username, username, username, "Passw0rd!", username + "@test.it"))
                 .post("/signup")
                 .then()
                 .statusCode(201);
