@@ -29,3 +29,5 @@ services:
         sync: false
       - key: GAMEHUB_CORS_ORIGINS
         sync: false
+      - key: GAMEHUB_FRONTEND_URL
+        sync: false
