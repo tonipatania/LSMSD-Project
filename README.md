@@ -34,11 +34,13 @@ spring.neo4j.authentication.password=elliejoel
 The JWT signing secret can be overridden via the `GAMEHUB_JWT_SECRET` environment variable
 (a default dev value is baked in).
 
-Account confirmation emails are sent via Gmail SMTP. Set `GAMEHUB_MAIL_USERNAME` (the sending
-Gmail address) and `GAMEHUB_MAIL_PASSWORD` (a Google [App Password](https://myaccount.google.com/apppasswords),
-not the account password — requires 2-Step Verification enabled). Without them, registration
-still succeeds but the confirmation email fails to send (logged, not thrown) and the account
-stays unconfirmed until a link can be issued.
+Account confirmation emails are sent via the [Brevo](https://www.brevo.com) transactional email
+API (HTTPS, free tier 300/day — not SMTP, so it isn't affected by hosts that block outbound SMTP
+ports). Set `GAMEHUB_BREVO_API_KEY` (a transactional API key from the Brevo dashboard, under
+SMTP & API > API Keys) and `GAMEHUB_MAIL_FROM` (a sender address verified in the Brevo dashboard
+under Senders, Domains & Dedicated IPs > Senders). Without them, registration still succeeds but
+the confirmation email fails to send (logged, not thrown) and the account stays unconfirmed until
+a link can be issued.
 
 ## Running
 
