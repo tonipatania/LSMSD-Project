@@ -43,7 +43,8 @@ public class LoginService implements ILoginService {
         try {
             User u = loginRepository.findByUsername(username);
             if (u == null || !matchesPassword(u, password)) {
-                return new AuthResponse(false, "Invalid username or password", null);
+                return new AuthResponse(
+                        false, "Credenziali non valide", "INVALID_CREDENTIALS", null);
             }
             // enabled == null copre gli utenti del seed dataset, creati prima dell'introduzione
             // della conferma via email: solo false (impostato esplicitamente in registrate())
@@ -53,14 +54,17 @@ public class LoginService implements ILoginService {
                         false,
                         "Account non confermato: controlla la tua email per completare la"
                                 + " registrazione",
+                        "EMAIL_NOT_CONFIRMED",
                         null);
             }
 
             String token = jwtService.generateToken(u.getUsername(), resolveRole(u));
-            return new AuthResponse(true, "Login Successful", u.getUsername(), token, u.getRole());
+            return new AuthResponse(
+                    true, null, null, u.getUsername(), token, u.getRole());
         } catch (MongoException e) {
             log.error("Errore durante il recupero dell'utente da MongoDB", e);
-            return new AuthResponse(false, "Error occurred while authenticating", null);
+            return new AuthResponse(
+                    false, "Errore durante l'autenticazione", "AUTH_ERROR", null);
         }
     }
 

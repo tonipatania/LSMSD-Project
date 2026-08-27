@@ -46,7 +46,8 @@ class LoginControllerTest {
 
     @Test
     void login_validCredentials_returnsOkWithAuthResponse() throws Exception {
-        AuthResponse success = new AuthResponse(true, "Login Successful", "Lunark", "jwt", "USER");
+        AuthResponse success =
+                new AuthResponse(true, null, null, "Lunark", "jwt", "USER");
         when(loginService.authenticate(any(LoginDTO.class))).thenReturn(success);
 
         mockMvc.perform(
@@ -62,7 +63,8 @@ class LoginControllerTest {
 
     @Test
     void login_invalidCredentials_returnsUnauthorized() throws Exception {
-        AuthResponse failure = new AuthResponse(false, "Invalid username or password", null);
+        AuthResponse failure =
+                new AuthResponse(false, "Credenziali non valide", "INVALID_CREDENTIALS", null);
         when(loginService.authenticate(any(LoginDTO.class))).thenReturn(failure);
 
         mockMvc.perform(
