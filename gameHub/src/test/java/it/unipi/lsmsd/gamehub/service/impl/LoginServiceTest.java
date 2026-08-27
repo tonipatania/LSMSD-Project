@@ -64,7 +64,7 @@ class LoginServiceTest {
         AuthResponse response = loginService.authenticate(new LoginDTO("ghost", "pwd"));
 
         assertThat(response.isSuccess()).isFalse();
-        assertThat(response.getErrorMessage()).isEqualTo("Invalid username or password");
+        assertThat(response.getErrorCode()).isEqualTo("INVALID_CREDENTIALS");
     }
 
     @Test
@@ -137,7 +137,7 @@ class LoginServiceTest {
         AuthResponse response = loginService.authenticate(new LoginDTO("Lunark", "correct"));
 
         assertThat(response.isSuccess()).isFalse();
-        assertThat(response.getErrorMessage()).contains("non confermato");
+        assertThat(response.getErrorCode()).isEqualTo("EMAIL_NOT_CONFIRMED");
         assertThat(response.getToken()).isNull();
         verify(jwtService, never()).generateToken(any(), any());
     }
