@@ -47,17 +47,22 @@ class ReviewJourneyE2EIT extends E2ETestSupport {
                 .then()
                 .statusCode(201);
 
+        // the review-by-title endpoint was removed as dead code (never called by the frontend,
+        // which reads reviews from the game's own embedded, size-capped list instead) - so the
+        // review is looked up the same way the UI does, via the paginated game search.
         String reviewId =
                 authenticatedAs("Kaistlin", "USER")
-                        .queryParam("title", "BARRIER X")
-                        .get("/review/gameSelected/searchByGameTitle")
+                        .queryParam("name", "BARRIER X")
+                        .queryParam("page", 0)
+                        .queryParam("size", 1)
+                        .get("/game/searchFilter")
                         .then()
                         .statusCode(200)
-                        .body("size()", equalTo(1))
-                        .body("[0].username", equalTo("Kaistlin"))
-                        .body("[0].likeCount", equalTo(0))
+                        .body("content[0].reviews.size()", equalTo(1))
+                        .body("content[0].reviews[0].username", equalTo("Kaistlin"))
+                        .body("content[0].reviews[0].likeCount", equalTo(0))
                         .extract()
-                        .path("[0].id");
+                        .path("content[0].reviews[0].id");
 
         authenticatedAs("Kaistlin", "USER")
                 .queryParam("username", "Kaistlin")
@@ -67,10 +72,12 @@ class ReviewJourneyE2EIT extends E2ETestSupport {
                 .statusCode(200);
 
         authenticatedAs("Kaistlin", "USER")
-                .queryParam("title", "BARRIER X")
-                .get("/review/gameSelected/searchByGameTitle")
+                .queryParam("name", "BARRIER X")
+                .queryParam("page", 0)
+                .queryParam("size", 1)
+                .get("/game/searchFilter")
                 .then()
                 .statusCode(200)
-                .body("[0].likeCount", equalTo(1));
+                .body("content[0].reviews[0].likeCount", equalTo(1));
     }
 }

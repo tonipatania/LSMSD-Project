@@ -103,20 +103,6 @@ class GameServiceTest {
     }
 
     @Test
-    void retrieveAggregateGamesByGenresAndSortByScore_repositoryThrows_returnsNull() {
-        when(gameRepository.findAggregation()).thenThrow(new RuntimeException("boom"));
-
-        assertThat(gameService.retrieveAggregateGamesByGenresAndSortByScore()).isNull();
-    }
-
-    @Test
-    void findAggregation4_repositoryThrows_returnsNull() {
-        when(gameRepository.findAggregation4()).thenThrow(new RuntimeException("boom"));
-
-        assertThat(gameService.findAggregation4()).isNull();
-    }
-
-    @Test
     void getGamesWithReviews_repositorySucceeds_returnsGames() {
         when(gameRepository.findGamesWithReviews(any(Pageable.class)))
                 .thenReturn(List.of(game("g1", "BARRIER X")));

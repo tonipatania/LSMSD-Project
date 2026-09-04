@@ -6,22 +6,17 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTOAggregation;
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTOAggregation2;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IReviewNeo4jService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
-import java.util.Collections;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,56 +49,6 @@ class ReviewControllerTest {
         review.setId(id);
         review.setTitle(title);
         return review;
-    }
-
-    @Test
-    void retrieveReviewByTitle_serviceSucceeds_returnsOkWithList() throws Exception {
-        when(review2Service.retrieveReviewByTitle(any()))
-                .thenReturn(List.of(review("r1", "BARRIER X")));
-
-        mockMvc.perform(get("/review/gameSelected/searchByGameTitle").param("title", "BARRIER X"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value("r1"));
-    }
-
-    @Test
-    void retrieveReviewByTitle_serviceReturnsNull_returnsInternalServerError() throws Exception {
-        when(review2Service.retrieveReviewByTitle(any())).thenReturn(null);
-
-        mockMvc.perform(get("/review/gameSelected/searchByGameTitle").param("title", "BARRIER X"))
-                .andExpect(status().isInternalServerError());
-    }
-
-    @Test
-    void retrieveAggregateFirstAndLastUserLike_nonEmptyResult_returnsOk() throws Exception {
-        when(review2Service.retrieveAggregateFirstAndLastUserLike())
-                .thenReturn(List.of(new ReviewDTOAggregation("Kaistlin", 12)));
-
-        mockMvc.perform(get("/review/aggr1")).andExpect(status().isOk());
-    }
-
-    @Test
-    void retrieveAggregateFirstAndLastUserLike_emptyResult_returnsInternalServerError()
-            throws Exception {
-        when(review2Service.retrieveAggregateFirstAndLastUserLike())
-                .thenReturn(Collections.emptyList());
-
-        mockMvc.perform(get("/review/aggr1")).andExpect(status().isInternalServerError());
-    }
-
-    @Test
-    void findAggregation3_nonEmptyResult_returnsOk() throws Exception {
-        when(review2Service.findAggregation3())
-                .thenReturn(List.of(new ReviewDTOAggregation2("BARRIER X", 8, 4)));
-
-        mockMvc.perform(get("/review/aggr2")).andExpect(status().isOk());
-    }
-
-    @Test
-    void findAggregation3_emptyResult_returnsInternalServerError() throws Exception {
-        when(review2Service.findAggregation3()).thenReturn(Collections.emptyList());
-
-        mockMvc.perform(get("/review/aggr2")).andExpect(status().isInternalServerError());
     }
 
     private ReviewDTO reviewDto() {

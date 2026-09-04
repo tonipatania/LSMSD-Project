@@ -9,8 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTOAggregation;
-import it.unipi.lsmsd.gamehub.DTO.ReviewDTOAggregation2;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.User;
@@ -55,62 +53,6 @@ class ReviewServiceTest {
 
     private ReviewDTO reviewDto() {
         return new ReviewDTO(null, "BARRIER X", 8, "Amazing", "Kaistlin");
-    }
-
-    @Test
-    void retrieveReviewByTitle_repositorySucceeds_returnsList() {
-        ReviewDTO dto = new ReviewDTO(null, "BARRIER X", 0, null, null);
-        when(reviewRepository.findByTitle("BARRIER X"))
-                .thenReturn(List.of(review("r1", "BARRIER X")));
-
-        List<Review> result = reviewService.retrieveReviewByTitle(dto);
-
-        assertThat(result).hasSize(1);
-    }
-
-    @Test
-    void retrieveReviewByTitle_repositoryThrows_returnsNull() {
-        ReviewDTO dto = new ReviewDTO(null, "BARRIER X", 0, null, null);
-        when(reviewRepository.findByTitle("BARRIER X")).thenThrow(new RuntimeException("boom"));
-
-        assertThat(reviewService.retrieveReviewByTitle(dto)).isNull();
-    }
-
-    @Test
-    void retrieveAggregateFirstAndLastUserLike_nonEmptyResult_returnsList() {
-        when(reviewRepository.findAggregation2())
-                .thenReturn(List.of(new ReviewDTOAggregation("Kaistlin", 12)));
-
-        assertThat(reviewService.retrieveAggregateFirstAndLastUserLike()).hasSize(1);
-    }
-
-    @Test
-    void retrieveAggregateFirstAndLastUserLike_emptyResult_returnsNull() {
-        when(reviewRepository.findAggregation2()).thenReturn(Collections.emptyList());
-
-        assertThat(reviewService.retrieveAggregateFirstAndLastUserLike()).isNull();
-    }
-
-    @Test
-    void retrieveAggregateFirstAndLastUserLike_repositoryThrows_returnsNull() {
-        when(reviewRepository.findAggregation2()).thenThrow(new RuntimeException("boom"));
-
-        assertThat(reviewService.retrieveAggregateFirstAndLastUserLike()).isNull();
-    }
-
-    @Test
-    void findAggregation3_repositoryThrows_returnsNull() {
-        when(reviewRepository.findAggregation3()).thenThrow(new RuntimeException("boom"));
-
-        assertThat(reviewService.findAggregation3()).isNull();
-    }
-
-    @Test
-    void findAggregation3_repositorySucceeds_returnsList() {
-        when(reviewRepository.findAggregation3())
-                .thenReturn(List.of(new ReviewDTOAggregation2("BARRIER X", 8, 4)));
-
-        assertThat(reviewService.findAggregation3()).hasSize(1);
     }
 
     @Test

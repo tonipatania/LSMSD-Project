@@ -5,8 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
-import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation2;
 import it.unipi.lsmsd.gamehub.model.Game;
 import java.util.Arrays;
 import java.util.List;
@@ -126,30 +124,6 @@ class GameRepositoryImplTest {
 
         assertThat(page.getTotalElements()).isEqualTo(7L);
         assertThat(page.getContent()).containsExactly(game);
-    }
-
-    @Test
-    void findAggregation_delegatesToMongoTemplateAggregateOnGamesCollection() {
-        List<GameDTOAggregation> expected = List.of(new GameDTOAggregation("RPG", 8.5, 3));
-        when(mongoTemplate.aggregate(
-                        any(Aggregation.class), eq("games"), eq(GameDTOAggregation.class)))
-                .thenReturn(new AggregationResults<>(expected, new Document()));
-
-        List<GameDTOAggregation> result = gameRepositoryImpl.findAggregation();
-
-        assertThat(result).isEqualTo(expected);
-    }
-
-    @Test
-    void findAggregation4_delegatesToMongoTemplateAggregateOnGamesCollection() {
-        List<GameDTOAggregation2> expected = List.of(new GameDTOAggregation2(2008, 7.0, 5));
-        when(mongoTemplate.aggregate(
-                        any(Aggregation.class), eq("games"), eq(GameDTOAggregation2.class)))
-                .thenReturn(new AggregationResults<>(expected, new Document()));
-
-        List<GameDTOAggregation2> result = gameRepositoryImpl.findAggregation4();
-
-        assertThat(result).isEqualTo(expected);
     }
 
     @Test
