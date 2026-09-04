@@ -1,8 +1,6 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
-import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
-import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation2;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
@@ -50,28 +48,6 @@ public class GameService implements IGameService {
             return gameRepository.findDistinctGenres();
         } catch (Exception e) {
             log.error("Errore in findDistinctGenres", e);
-            return null;
-        }
-    }
-
-    @Override
-    public List<GameDTOAggregation> retrieveAggregateGamesByGenresAndSortByScore() {
-        try {
-            List<GameDTOAggregation> gameList = gameRepository.findAggregation();
-            return gameList;
-        } catch (Exception e) {
-            log.error("Errore in retrieveAggregateGamesByGenresAndSortByScore", e);
-            return null;
-        }
-    }
-
-    @Override
-    public List<GameDTOAggregation2> findAggregation4() {
-        try {
-            List<GameDTOAggregation2> gameList = gameRepository.findAggregation4();
-            return gameList;
-        } catch (Exception e) {
-            log.error("Errore in findAggregation4", e);
             return null;
         }
     }

@@ -1,6 +1,6 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
-import it.unipi.lsmsd.gamehub.DTO.*;
+import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
@@ -30,40 +30,6 @@ public class ReviewService implements IReviewService {
     @Autowired private LoginRepository loginRepository;
 
     @Autowired private IGameService gameService;
-
-    @Override
-    public List<Review> retrieveReviewByTitle(ReviewDTO reviewDTO) {
-        try {
-            return reviewRepository.findByTitle(reviewDTO.getTitle());
-        } catch (Exception e) {
-            log.error("Errore in retrieveReviewByTitle", e);
-            return null;
-        }
-    }
-
-    @Override
-    public List<ReviewDTOAggregation> retrieveAggregateFirstAndLastUserLike() {
-        try {
-            List<ReviewDTOAggregation> reviewList = reviewRepository.findAggregation2();
-            if (!reviewList.isEmpty()) {
-                return reviewList;
-            }
-            return null;
-        } catch (Exception e) {
-            log.error("Errore in retrieveAggregateFirstAndLastUserLike", e);
-            return null;
-        }
-    }
-
-    @Override
-    public List<ReviewDTOAggregation2> findAggregation3() {
-        try {
-            return reviewRepository.findAggregation3();
-        } catch (Exception e) {
-            log.error("Errore in findAggregation3", e);
-            return null;
-        }
-    }
 
     @Override
     public List<Review> retrieveByTitleOrderByLikeCountDesc(ReviewDTO reviewDTO, int limit) {

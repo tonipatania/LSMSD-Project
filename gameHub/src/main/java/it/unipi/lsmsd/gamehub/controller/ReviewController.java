@@ -1,11 +1,10 @@
 package it.unipi.lsmsd.gamehub.controller;
 
-import it.unipi.lsmsd.gamehub.DTO.*;
+import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IReviewNeo4jService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,45 +19,6 @@ public class ReviewController {
 
     @Autowired private ILoginService iLoginService;
     @Autowired private IReviewNeo4jService reviewNeo4jService;
-
-    /*Postman parameters
-    {
-        "title":"Galactic Bowling"
-    }*/
-    @GetMapping("gameSelected/searchByGameTitle")
-    public ResponseEntity<Object> retrieveReviewByTitle(@RequestParam String title) {
-        ReviewDTO reviewDTO = new ReviewDTO();
-        reviewDTO.setTitle(title);
-        List<Review> reviewList = review2Service.retrieveReviewByTitle(reviewDTO);
-        if (reviewList != null) {
-            return ResponseEntity.ok(reviewList);
-        }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
-
-    @GetMapping("/aggr1")
-    public ResponseEntity<List<ReviewDTOAggregation>> retrieveAggregateFirstAndLastUserLike() {
-        List<ReviewDTOAggregation> reviewList =
-                review2Service.retrieveAggregateFirstAndLastUserLike();
-
-        if (!reviewList.isEmpty()) {
-            return ResponseEntity.ok(reviewList);
-        }
-        log.debug("gamelist empty");
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
-
-    // order games by reviews userscore
-    @GetMapping("/aggr2")
-    public ResponseEntity<List<ReviewDTOAggregation2>> findAggregation3() {
-        List<ReviewDTOAggregation2> reviewList = review2Service.findAggregation3();
-
-        if (!reviewList.isEmpty()) {
-            return ResponseEntity.ok(reviewList);
-        }
-        log.debug("gamelist empty");
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
 
     /*Postman parameters
     {

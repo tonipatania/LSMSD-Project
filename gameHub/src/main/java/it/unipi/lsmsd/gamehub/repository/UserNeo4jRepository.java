@@ -127,9 +127,13 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
             "MATCH (user:UserNeo4j{username:$username})-[like:LIKE]->(review:ReviewNeo4j{id: $id}) DELETE like RETURN count(like) AS removed")
     Long removeLikeFromReview(@Param("username") String username, @Param("id") String id);
 
-    // id delle review a cui l'utente ha messo like
+    // id delle review a cui l'utente ha messo like. LIMIT come rete di sicurezza: la lista serve
+    // solo a costruire il set client-side "ho gia' messo like a questa review" (vedi
+    // ReviewService.loadLikedReviews sul frontend), quindi un taglio oltre questa soglia e'
+    // impercettibile ma protegge da un payload sconfinato per un utente che ha messo like a
+    // moltissime review.
     @Query(
-            "MATCH (user:UserNeo4j{username:$username})-[:LIKE]->(review:ReviewNeo4j) RETURN review.id")
+            "MATCH (user:UserNeo4j{username:$username})-[:LIKE]->(review:ReviewNeo4j) RETURN review.id LIMIT 5000")
     List<String> findLikedReviewIds(@Param("username") String username);
 
     @Query(

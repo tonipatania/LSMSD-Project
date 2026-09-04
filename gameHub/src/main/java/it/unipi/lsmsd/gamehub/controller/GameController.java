@@ -1,8 +1,6 @@
 package it.unipi.lsmsd.gamehub.controller;
 
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
-import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
-import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation2;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
@@ -53,34 +51,6 @@ public class GameController {
         if (genres != null) {
             return ResponseEntity.ok(genres);
         }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
-
-    //  average score for each genre - descending order
-    @GetMapping("/gameAggr1")
-    public ResponseEntity<Object> retrieveAggregateGamesByGenresAndSortByScore() {
-        List<GameDTOAggregation> gameList =
-                gameService.retrieveAggregateGamesByGenresAndSortByScore();
-
-        if (gameList != null && !gameList.isEmpty()) {
-            return ResponseEntity.ok(gameList);
-        } else if (gameList != null && gameList.isEmpty()) {
-            return ResponseEntity.ok("gameList empty");
-        }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
-
-    // average score for each year - descending order
-    @GetMapping("/gameAggr2")
-    public ResponseEntity<Object> findAggregation() {
-        List<GameDTOAggregation2> gameList = gameService.findAggregation4();
-
-        if (gameList != null && !gameList.isEmpty()) {
-            return ResponseEntity.ok(gameList);
-        } else if (gameList != null && gameList.isEmpty()) {
-            return ResponseEntity.ok("gameList empty");
-        }
-
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
@@ -207,9 +177,12 @@ public class GameController {
     }
 
     // games that actually have review content, used for the home page's review feed
+    private static final int MAX_WITH_REVIEWS_SIZE = 100;
+
     @GetMapping("/withReviews")
     public ResponseEntity<List<Game>> getGamesWithReviews(
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(gameService.getGamesWithReviews(size));
+        return ResponseEntity.ok(
+                gameService.getGamesWithReviews(Math.min(size, MAX_WITH_REVIEWS_SIZE)));
     }
 }
