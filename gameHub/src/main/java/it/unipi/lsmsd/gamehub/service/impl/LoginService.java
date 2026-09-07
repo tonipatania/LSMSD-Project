@@ -59,12 +59,10 @@ public class LoginService implements ILoginService {
             }
 
             String token = jwtService.generateToken(u.getUsername(), resolveRole(u));
-            return new AuthResponse(
-                    true, null, null, u.getUsername(), token, u.getRole());
+            return new AuthResponse(true, null, null, u.getUsername(), token, u.getRole());
         } catch (MongoException e) {
             log.error("Errore durante il recupero dell'utente da MongoDB", e);
-            return new AuthResponse(
-                    false, "Errore durante l'autenticazione", "AUTH_ERROR", null);
+            return new AuthResponse(false, "Errore durante l'autenticazione", "AUTH_ERROR", null);
         }
     }
 

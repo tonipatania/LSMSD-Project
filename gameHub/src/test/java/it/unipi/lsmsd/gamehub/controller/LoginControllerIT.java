@@ -69,9 +69,9 @@ class LoginControllerIT extends IntegrationTestSupport {
     @Test
     void login_beforeEmailConfirmation_isRejected() throws Exception {
         mockMvc.perform(
-                post("/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registrationDTO())))
+                        post("/signup")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(registrationDTO())))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(
@@ -87,9 +87,9 @@ class LoginControllerIT extends IntegrationTestSupport {
     @Test
     void confirmEmail_validToken_enablesAccountAndAllowsLogin() throws Exception {
         mockMvc.perform(
-                post("/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registrationDTO())))
+                        post("/signup")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(registrationDTO())))
                 .andExpect(status().isCreated());
 
         User savedUser =
