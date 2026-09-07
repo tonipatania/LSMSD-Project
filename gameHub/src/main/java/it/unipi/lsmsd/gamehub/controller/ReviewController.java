@@ -2,6 +2,7 @@ package it.unipi.lsmsd.gamehub.controller;
 
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Review;
+import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IReviewNeo4jService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
@@ -19,6 +20,7 @@ public class ReviewController {
 
     @Autowired private ILoginService iLoginService;
     @Autowired private IReviewNeo4jService reviewNeo4jService;
+    @Autowired private IActivityService activityService;
 
     /*Postman parameters
     {
@@ -38,6 +40,13 @@ public class ReviewController {
         // creo su neo4j
         ResponseEntity<String> response = reviewNeo4jService.createReview(review.getId());
         if (response.getStatusCode() == HttpStatus.CREATED) {
+            // registrata solo ora che la review esiste in entrambi gli store: se la review viene
+            // poi rollbackata sotto (Neo4j fallito) non deve comparire nel feed
+            activityService.recordReview(
+                    reviewDTO.getUsername(),
+                    reviewDTO.getTitle(),
+                    review.getId(),
+                    reviewDTO.getUserScore());
             return response;
         }
         // cancellare review in mongo

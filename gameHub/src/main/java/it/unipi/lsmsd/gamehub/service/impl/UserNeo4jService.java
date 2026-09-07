@@ -3,6 +3,7 @@ package it.unipi.lsmsd.gamehub.service.impl;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.*;
 import it.unipi.lsmsd.gamehub.repository.*;
+import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import java.time.Duration;
@@ -65,6 +66,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
 
     @Autowired private IGameService gameService;
+    @Autowired private IActivityService activityService;
 
     @Override
     public void SyncUser() {
@@ -241,6 +243,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             UserNeo4j userNeo4j = userNeo4jRepository.getUser(username);
             if (gameNeo4j != null && userNeo4j != null) {
                 userNeo4jRepository.addGameToUser(username, name);
+                activityService.recordWishlistAdd(username, name);
                 return true;
             }
 

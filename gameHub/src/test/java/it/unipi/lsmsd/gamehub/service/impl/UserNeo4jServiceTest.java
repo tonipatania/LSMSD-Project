@@ -19,6 +19,7 @@ import it.unipi.lsmsd.gamehub.repository.GameRepository;
 import it.unipi.lsmsd.gamehub.repository.LoginRepository;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
+import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +49,7 @@ class UserNeo4jServiceTest {
     @Mock private ValueOperations<String, Object> valueOperations;
     @Mock private Executor suggestionsExecutor;
     @Mock private IGameService gameService;
+    @Mock private IActivityService activityService;
 
     @InjectMocks private UserNeo4jService userNeo4jService;
 

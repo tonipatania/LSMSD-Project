@@ -13,6 +13,10 @@ import org.springframework.stereotype.Repository;
 public interface GameRepository extends MongoRepository<Game, String>, GameRepositoryCustom {
     List<Game> findByName(String name);
 
+    // usato per arricchire in blocco un elenco eterogeneo di nomi (es. il feed attivita' amici)
+    // con una sola query invece di una per riga
+    List<Game> findByNameIn(List<String> names);
+
     Page<Game> findAll(Pageable pageable);
 
     // avgScore isn't derived from the embedded Reviews array (most 100-score games have only

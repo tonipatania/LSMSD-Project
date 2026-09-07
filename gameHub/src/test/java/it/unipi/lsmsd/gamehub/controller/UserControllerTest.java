@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.security.JwtService;
+import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import java.util.List;
@@ -37,6 +38,7 @@ class UserControllerTest {
 
     @MockBean private IUserNeo4jService userNeo4jService;
     @MockBean private ILoginService iLoginService;
+    @MockBean private IActivityService activityService;
 
     // see LoginControllerTest for why this is required even with addFilters = false
     @MockBean private JwtService jwtService;
