@@ -1,9 +1,11 @@
 package it.unipi.lsmsd.gamehub.controller;
 
+import it.unipi.lsmsd.gamehub.DTO.ActivityDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
+import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import java.util.List;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     @Autowired private IUserNeo4jService userNeo4jService;
     @Autowired private ILoginService iLoginService;
+    @Autowired private IActivityService activityService;
 
     // to load games from mongo to neo4j
     @PostMapping("/loadgames")
@@ -109,6 +112,14 @@ public class UserController {
     public ResponseEntity<Page<UserNeo4j>> getFollowedUserPage(
             @RequestParam String username, @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(userNeo4jService.getFollowedUserPage(username, pageable));
+    }
+
+    // feed "attivita' amici" della Home: cosa hanno fatto di recente le persone seguite
+    // (aggiunte alla wishlist, nuove review), piu' recenti prima
+    @GetMapping("/activity/friends")
+    public ResponseEntity<Page<ActivityDTO>> getFriendsActivity(
+            @RequestParam String username, @PageableDefault(size = 15) Pageable pageable) {
+        return ResponseEntity.ok(activityService.getFriendsActivity(username, pageable));
     }
 
     @GetMapping("/search")

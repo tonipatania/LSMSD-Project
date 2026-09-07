@@ -8,6 +8,7 @@ import it.unipi.lsmsd.gamehub.repository.LoginRepository;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,7 @@ public class ReviewService implements IReviewService {
             if (game != null && loginRepository.findByUsername(reviewDTO.getUsername()) != null) {
                 ModelMapper modelMapper = new ModelMapper();
                 Review review = modelMapper.map(reviewDTO, Review.class);
+                review.setCreatedAt(Instant.now());
                 // inserisco il model nel db
 
                 reviewRepository.save(review);

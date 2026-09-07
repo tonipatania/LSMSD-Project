@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.security.JwtService;
+import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IReviewNeo4jService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
@@ -40,6 +41,7 @@ class ReviewControllerTest {
     @MockBean private IReviewService review2Service;
     @MockBean private ILoginService iLoginService;
     @MockBean private IReviewNeo4jService reviewNeo4jService;
+    @MockBean private IActivityService activityService;
 
     // see LoginControllerTest for why this is required even with addFilters = false
     @MockBean private JwtService jwtService;
