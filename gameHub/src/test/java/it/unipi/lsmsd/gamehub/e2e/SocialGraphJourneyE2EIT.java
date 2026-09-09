@@ -9,11 +9,12 @@ import it.unipi.lsmsd.gamehub.support.E2ETestSupport;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-// Follow/wishlist over real HTTP, plus the admin loadgames endpoint - the only endpoint in this
-// app gated by a real hasRole("ADMIN") check at the Security layer (every other "admin" endpoint
-// is only an application-level Mongo User.role lookup, see backend-e2e-tests). /user/sync was
-// removed: it let anyone holding an ADMIN token trigger a full Mongo->Neo4j user resync on demand,
-// an unbounded-cost operation with no place in a production attack surface.
+// Follow/wishlist over real HTTP, plus the admin loadgames endpoint. Every "admin" endpoint
+// (loadgames via SecurityConfig's URL rule, the rest via @PreAuthorize("hasRole('ADMIN')")) is
+// gated on the caller's own JWT role claim, never on a client-supplied userId - see
+// backend-e2e-tests. /user/sync was removed: it let anyone holding an ADMIN token trigger a full
+// Mongo->Neo4j user resync on demand, an unbounded-cost operation with no place in a production
+// attack surface.
 class SocialGraphJourneyE2EIT extends E2ETestSupport {
 
     private void registerUser(String username) {

@@ -1,5 +1,6 @@
 package it.unipi.lsmsd.gamehub.controller;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -14,24 +15,36 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.security.JwtService;
+import it.unipi.lsmsd.gamehub.security.SecurityConfig;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(UserController.class)
 @AutoConfigureMockMvc(addFilters = false)
+// @WebMvcTest doesn't pick up SecurityConfig on its own; without this @Import,
+// @EnableMethodSecurity's infrastructure never gets registered and @PreAuthorize on
+// UserController's admin endpoint silently has no effect in this test context
+@Import(SecurityConfig.class)
 class UserControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -42,6 +55,42 @@ class UserControllerTest {
 
     // see LoginControllerTest for why this is required even with addFilters = false
     @MockBean private JwtService jwtService;
+
+    // With addFilters = false, JwtAuthenticationFilter never runs, so
+    // SecurityMockMvcRequestPostProcessors.authentication() (which only bridges into
+    // SecurityContextHolder via a filter) has no effect here - set the real SecurityContextHolder
+    // directly instead, matching the Authentication JwtAuthenticationFilter builds in production
+    // (a plain-String principal with a single ROLE_* authority from the "role" claim). MockMvc
+    // dispatches synchronously on this thread, so @PreAuthorize/@AuthenticationPrincipal in the
+    // controller see it; @AfterEach clears it so it can't leak into the next test.
+    private static RequestPostProcessor asUser(String username) {
+        return request -> {
+            SecurityContextHolder.getContext()
+                    .setAuthentication(
+                            new UsernamePasswordAuthenticationToken(
+                                    username,
+                                    null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+            return request;
+        };
+    }
+
+    private static RequestPostProcessor asAdmin(String username) {
+        return request -> {
+            SecurityContextHolder.getContext()
+                    .setAuthentication(
+                            new UsernamePasswordAuthenticationToken(
+                                    username,
+                                    null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+            return request;
+        };
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     void getUserWishlist_serviceReturnsNull_returnsInternalServerError() throws Exception {
@@ -67,7 +116,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/wishlist/addWishlistGame")
-                                .param("username", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("name", "BARRIER X"))
                 .andExpect(status().isInternalServerError());
     }
@@ -78,7 +127,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/wishlist/addWishlistGame")
-                                .param("username", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("name", "BARRIER X"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("game added"));
@@ -90,7 +139,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/wishlist/addWishlistGame")
-                                .param("username", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("name", "BARRIER X"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("no game added"));
@@ -102,7 +151,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/wishlist/deleteWishlistGame")
-                                .param("username", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("name", "BARRIER X"))
                 .andExpect(status().isInternalServerError());
     }
@@ -113,7 +162,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/reviewSelected/addLikeReview")
-                                .param("username", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("id", "r1"))
                 .andExpect(status().isInternalServerError());
     }
@@ -124,7 +173,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/reviewSelected/addLikeReview")
-                                .param("username", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("id", "r1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("added like"));
@@ -136,7 +185,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/reviewSelected/addLikeReview")
-                                .param("username", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("id", "r1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("no added like"));
@@ -148,7 +197,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/reviewSelected/removeLikeReview")
-                                .param("username", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("id", "r1"))
                 .andExpect(status().isInternalServerError());
     }
@@ -159,7 +208,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/reviewSelected/removeLikeReview")
-                                .param("username", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("id", "r1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("removed like"));
@@ -171,28 +220,31 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/reviewSelected/removeLikeReview")
-                                .param("username", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("id", "r1"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("no removed like"));
     }
 
     @Test
-    void countGame_callerNotAdmin_forwardsRoleCheckStatus() throws Exception {
-        when(iLoginService.roleUser("u1"))
-                .thenReturn(new ResponseEntity<>("forbidden", HttpStatus.UNAUTHORIZED));
-
-        mockMvc.perform(get("/user/countUser/u1")).andExpect(status().isUnauthorized());
+    void countGame_callerNotAdmin_returnsForbidden() {
+        // ExceptionTranslationFilter (the piece that turns AccessDeniedException into an HTTP 403)
+        // is part of the Spring Security filter chain, which addFilters = false disables - so this
+        // slice test can only observe @PreAuthorize denying access as the exception itself
+        // propagating out of the DispatcherServlet, not as a 403 response. The real HTTP-level
+        // translation is covered by the e2e suite (SocialGraphJourneyE2EIT), which runs with the
+        // full filter chain.
+        assertThatThrownBy(() -> mockMvc.perform(get("/user/countUser/u1").with(asUser("someone"))))
+                .hasCauseInstanceOf(AccessDeniedException.class);
 
         verify(userNeo4jService, never()).countUserDocument();
     }
 
     @Test
     void countGame_callerIsAdmin_returnsCount() throws Exception {
-        when(iLoginService.roleUser("u1")).thenReturn(new ResponseEntity<>("ADMIN", HttpStatus.OK));
         when(userNeo4jService.countUserDocument()).thenReturn(7L);
 
-        mockMvc.perform(get("/user/countUser/u1"))
+        mockMvc.perform(get("/user/countUser/u1").with(asAdmin("someone")))
                 .andExpect(status().isOk())
                 .andExpect(content().string("7"));
     }
@@ -203,7 +255,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/userSelected/follow")
-                                .param("followerUsername", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("followedUsername", "Kaistlin"))
                 .andExpect(status().isInternalServerError());
     }
@@ -214,7 +266,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/userSelected/follow")
-                                .param("followerUsername", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("followedUsername", "Kaistlin"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Followed successfully"));
@@ -226,7 +278,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/userSelected/unfollow")
-                                .param("followerUsername", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("followedUsername", "Kaistlin"))
                 .andExpect(status().isInternalServerError());
     }
@@ -237,7 +289,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         post("/user/userSelected/unfollow")
-                                .param("followerUsername", "Lunark")
+                                .with(asUser("Lunark"))
                                 .param("followedUsername", "Kaistlin"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("Unfollowed successfully"));
@@ -250,7 +302,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         patch("/user/updateUser")
-                                .param("username", "oldName")
+                                .with(asUser("oldName"))
                                 .param("newUsername", "newName"))
                 .andExpect(status().isConflict());
 
@@ -266,7 +318,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         patch("/user/updateUser")
-                                .param("username", "oldName")
+                                .with(asUser("oldName"))
                                 .param("newUsername", "newName"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("username correctly updated"));
@@ -284,7 +336,7 @@ class UserControllerTest {
 
         mockMvc.perform(
                         patch("/user/updateUser")
-                                .param("username", "oldName")
+                                .with(asUser("oldName"))
                                 .param("newUsername", "newName"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("username update failed, please try again later"));

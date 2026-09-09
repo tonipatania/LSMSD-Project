@@ -1,5 +1,6 @@
 package it.unipi.lsmsd.gamehub.controller;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -16,41 +17,87 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.security.JwtService;
+import it.unipi.lsmsd.gamehub.security.SecurityConfig;
 import it.unipi.lsmsd.gamehub.service.IGameService;
-import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @ExtendWith(SpringExtension.class)
 @WebMvcTest(GameController.class)
 @AutoConfigureMockMvc(addFilters = false)
+// @WebMvcTest doesn't pick up SecurityConfig on its own; without this @Import,
+// @EnableMethodSecurity's infrastructure never gets registered and @PreAuthorize on
+// GameController's admin endpoints silently has no effect in this test context
+@Import(SecurityConfig.class)
 class GameControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
     @MockBean private IGameService gameService;
-    @MockBean private ILoginService iLoginService;
     @MockBean private GameNeo4jService gameNeo4jService;
 
     // @WebMvcTest still wires SecurityConfig -> JwtAuthenticationFilter, whose constructor needs a
     // JwtService bean, even though @AutoConfigureMockMvc(addFilters = false) means it never runs:
     // without this @MockBean, context startup fails with a NoSuchBeanDefinitionException.
     @MockBean private JwtService jwtService;
+
+    // With addFilters = false, JwtAuthenticationFilter never runs, so
+    // SecurityMockMvcRequestPostProcessors.authentication() (which only bridges into
+    // SecurityContextHolder via a filter) has no effect here - set the real SecurityContextHolder
+    // directly instead, matching the Authentication JwtAuthenticationFilter builds in production
+    // (a plain-String principal with a single ROLE_* authority from the "role" claim). MockMvc
+    // dispatches synchronously on this thread, so @PreAuthorize in the controller sees it;
+    // @AfterEach clears it so it can't leak into the next test.
+    private static RequestPostProcessor asUser(String username) {
+        return request -> {
+            SecurityContextHolder.getContext()
+                    .setAuthentication(
+                            new UsernamePasswordAuthenticationToken(
+                                    username,
+                                    null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+            return request;
+        };
+    }
+
+    private static RequestPostProcessor asAdmin(String username) {
+        return request -> {
+            SecurityContextHolder.getContext()
+                    .setAuthentication(
+                            new UsernamePasswordAuthenticationToken(
+                                    username,
+                                    null,
+                                    List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+            return request;
+        };
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     private Game game(String id, String name) {
         Game game = new Game();
@@ -128,25 +175,29 @@ class GameControllerTest {
     }
 
     @Test
-    void createGame_callerNotAdmin_returnsRoleCheckResponseWithoutCreating() throws Exception {
-        when(iLoginService.roleUser("u1"))
-                .thenReturn(
-                        new ResponseEntity<>(
-                                "you do not have permissions for this operation",
-                                HttpStatus.UNAUTHORIZED));
-
-        mockMvc.perform(
-                        post("/game/create/u1")
-                                .contentType(MediaType.APPLICATION_JSON)
-                                .content(objectMapper.writeValueAsString(gameDto("BARRIER X"))))
-                .andExpect(status().isUnauthorized());
+    void createGame_callerNotAdmin_returnsForbiddenWithoutCreating() {
+        // ExceptionTranslationFilter (the piece that turns AccessDeniedException into an HTTP 403)
+        // is part of the Spring Security filter chain, which addFilters = false disables - so this
+        // slice test can only observe @PreAuthorize denying access as the exception itself
+        // propagating out of the DispatcherServlet, not as a 403 response. The real HTTP-level
+        // translation is covered by ReviewControllerIT and SocialGraphJourneyE2EIT, which run with
+        // the full filter chain.
+        assertThatThrownBy(
+                        () ->
+                                mockMvc.perform(
+                                        post("/game/create/u1")
+                                                .with(asUser("someone"))
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(
+                                                        objectMapper.writeValueAsString(
+                                                                gameDto("BARRIER X")))))
+                .hasCauseInstanceOf(AccessDeniedException.class);
 
         verify(gameService, never()).createGame(any());
     }
 
     @Test
     void createGame_mongoAndNeo4jSucceed_returnsCreated() throws Exception {
-        when(iLoginService.roleUser("u1")).thenReturn(new ResponseEntity<>("ADMIN", HttpStatus.OK));
         when(gameService.createGame(any(GameDTO.class)))
                 .thenReturn(new ResponseEntity<>("g1", HttpStatus.CREATED));
         when(gameNeo4jService.addGame(eq("g1"), eq("BARRIER X")))
@@ -154,6 +205,7 @@ class GameControllerTest {
 
         mockMvc.perform(
                         post("/game/create/u1")
+                                .with(asAdmin("someone"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(gameDto("BARRIER X"))))
                 .andExpect(status().isCreated());
@@ -161,7 +213,6 @@ class GameControllerTest {
 
     @Test
     void createGame_neo4jFails_rollsBackByDeletingMongoGame() throws Exception {
-        when(iLoginService.roleUser("u1")).thenReturn(new ResponseEntity<>("ADMIN", HttpStatus.OK));
         when(gameService.createGame(any(GameDTO.class)))
                 .thenReturn(new ResponseEntity<>("g1", HttpStatus.CREATED));
         when(gameNeo4jService.addGame(eq("g1"), eq("BARRIER X")))
@@ -171,6 +222,7 @@ class GameControllerTest {
 
         mockMvc.perform(
                         post("/game/create/u1")
+                                .with(asAdmin("someone"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(gameDto("BARRIER X"))))
                 .andExpect(status().isOk());
@@ -179,25 +231,31 @@ class GameControllerTest {
     }
 
     @Test
-    void deleteGame_callerNotAdmin_doesNotTouchGame() throws Exception {
-        when(iLoginService.roleUser("u1"))
-                .thenReturn(new ResponseEntity<>("forbidden", HttpStatus.UNAUTHORIZED));
-
-        mockMvc.perform(delete("/game/gameSelected/delete/u1").param("gameId", "g1"))
-                .andExpect(status().isUnauthorized());
+    void deleteGame_callerNotAdmin_doesNotTouchGame() {
+        // see createGame_callerNotAdmin_returnsForbiddenWithoutCreating for why this asserts on
+        // the thrown exception rather than the HTTP status
+        assertThatThrownBy(
+                        () ->
+                                mockMvc.perform(
+                                        delete("/game/gameSelected/delete/u1")
+                                                .with(asUser("someone"))
+                                                .param("gameId", "g1")))
+                .hasCauseInstanceOf(AccessDeniedException.class);
 
         verify(gameService, never()).deleteGame(anyString());
     }
 
     @Test
     void deleteGame_adminAndMongoDeleteSucceeds_alsoDeletesFromNeo4j() throws Exception {
-        when(iLoginService.roleUser("u1")).thenReturn(new ResponseEntity<>("ADMIN", HttpStatus.OK));
         when(gameService.deleteGame("g1"))
                 .thenReturn(new ResponseEntity<>("game deleted", HttpStatus.OK));
         when(gameNeo4jService.removeGame("g1"))
                 .thenReturn(new ResponseEntity<>("game deleted", HttpStatus.OK));
 
-        mockMvc.perform(delete("/game/gameSelected/delete/u1").param("gameId", "g1"))
+        mockMvc.perform(
+                        delete("/game/gameSelected/delete/u1")
+                                .with(asAdmin("someone"))
+                                .param("gameId", "g1"))
                 .andExpect(status().isOk());
 
         verify(gameNeo4jService).removeGame("g1");
@@ -205,30 +263,31 @@ class GameControllerTest {
 
     @Test
     void deleteGame_mongoDeleteFails_doesNotTouchNeo4j() throws Exception {
-        when(iLoginService.roleUser("u1")).thenReturn(new ResponseEntity<>("ADMIN", HttpStatus.OK));
         when(gameService.deleteGame("g1"))
                 .thenReturn(new ResponseEntity<>("game not deleted", HttpStatus.NOT_FOUND));
 
-        mockMvc.perform(delete("/game/gameSelected/delete/u1").param("gameId", "g1"))
+        mockMvc.perform(
+                        delete("/game/gameSelected/delete/u1")
+                                .with(asAdmin("someone"))
+                                .param("gameId", "g1"))
                 .andExpect(status().isNotFound());
 
         verify(gameNeo4jService, never()).removeGame(anyString());
     }
 
     @Test
-    void countGame_callerNotAdmin_forwardsRoleCheckStatus() throws Exception {
-        when(iLoginService.roleUser("u1"))
-                .thenReturn(new ResponseEntity<>("forbidden", HttpStatus.UNAUTHORIZED));
-
-        mockMvc.perform(get("/game/countGame/u1")).andExpect(status().isUnauthorized());
+    void countGame_callerNotAdmin_returnsForbidden() {
+        // see createGame_callerNotAdmin_returnsForbiddenWithoutCreating for why this asserts on
+        // the thrown exception rather than the HTTP status
+        assertThatThrownBy(() -> mockMvc.perform(get("/game/countGame/u1").with(asUser("someone"))))
+                .hasCauseInstanceOf(AccessDeniedException.class);
     }
 
     @Test
     void countGame_callerIsAdmin_returnsCount() throws Exception {
-        when(iLoginService.roleUser("u1")).thenReturn(new ResponseEntity<>("ADMIN", HttpStatus.OK));
         when(gameService.countGameDocument()).thenReturn(42L);
 
-        mockMvc.perform(get("/game/countGame/u1"))
+        mockMvc.perform(get("/game/countGame/u1").with(asAdmin("someone")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value(42));
     }
