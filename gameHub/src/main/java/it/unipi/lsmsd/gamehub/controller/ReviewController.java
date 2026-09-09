@@ -3,13 +3,14 @@ package it.unipi.lsmsd.gamehub.controller;
 import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
-import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IReviewNeo4jService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RequestMapping("review")
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.*;
 public class ReviewController {
     @Autowired private IReviewService review2Service;
 
-    @Autowired private ILoginService iLoginService;
     @Autowired private IReviewNeo4jService reviewNeo4jService;
     @Autowired private IActivityService activityService;
 
@@ -30,7 +30,11 @@ public class ReviewController {
             "userScore":8
     }*/
     @PostMapping("/gameSelected/create")
-    public ResponseEntity<String> createGame(@RequestBody ReviewDTO reviewDTO) {
+    public ResponseEntity<String> createGame(
+            @AuthenticationPrincipal String username, @RequestBody ReviewDTO reviewDTO) {
+        // l'autore della review e' sempre l'utente autenticato: un username diverso nel body
+        // permetterebbe di pubblicare recensioni a nome di chiunque
+        reviewDTO.setUsername(username);
         // creo review in mongo
         Review review = review2Service.createReview(reviewDTO);
         if (review == null) {
@@ -57,19 +61,11 @@ public class ReviewController {
     }
 
     @DeleteMapping("/reviewSelected/delete/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteGame(
             @PathVariable String userId, @RequestParam String reviewId) {
-        // controllo se si tratta di admin
-        ResponseEntity<String> responseEntity = iLoginService.roleUser(userId);
-        if (responseEntity.getStatusCode() != HttpStatus.OK) {
-            log.warn(
-                    "Utente {} senza permessi ha tentato di eliminare la review {}",
-                    userId,
-                    reviewId);
-            return responseEntity;
-        }
         // cancello su mongo
-        responseEntity = review2Service.deleteReview(reviewId);
+        ResponseEntity<String> responseEntity = review2Service.deleteReview(reviewId);
         if (responseEntity.getStatusCode() != HttpStatus.OK) {
             return responseEntity;
         }
