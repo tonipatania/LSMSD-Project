@@ -1,15 +1,16 @@
 package it.unipi.lsmsd.gamehub.controller;
 
-import it.unipi.lsmsd.gamehub.DTO.*;
+import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Review;
-import it.unipi.lsmsd.gamehub.service.ILoginService;
+import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.IReviewNeo4jService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RequestMapping("review")
@@ -18,47 +19,8 @@ import org.springframework.web.bind.annotation.*;
 public class ReviewController {
     @Autowired private IReviewService review2Service;
 
-    @Autowired private ILoginService iLoginService;
     @Autowired private IReviewNeo4jService reviewNeo4jService;
-
-    /*Postman parameters
-    {
-        "title":"Galactic Bowling"
-    }*/
-    @GetMapping("gameSelected/searchByGameTitle")
-    public ResponseEntity<Object> retrieveReviewByTitle(@RequestParam String title) {
-        ReviewDTO reviewDTO = new ReviewDTO();
-        reviewDTO.setTitle(title);
-        List<Review> reviewList = review2Service.retrieveReviewByTitle(reviewDTO);
-        if (reviewList != null) {
-            return ResponseEntity.ok(reviewList);
-        }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
-
-    @GetMapping("/aggr1")
-    public ResponseEntity<List<ReviewDTOAggregation>> retrieveAggregateFirstAndLastUserLike() {
-        List<ReviewDTOAggregation> reviewList =
-                review2Service.retrieveAggregateFirstAndLastUserLike();
-
-        if (!reviewList.isEmpty()) {
-            return ResponseEntity.ok(reviewList);
-        }
-        log.debug("gamelist empty");
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
-
-    // order games by reviews userscore
-    @GetMapping("/aggr2")
-    public ResponseEntity<List<ReviewDTOAggregation2>> findAggregation3() {
-        List<ReviewDTOAggregation2> reviewList = review2Service.findAggregation3();
-
-        if (!reviewList.isEmpty()) {
-            return ResponseEntity.ok(reviewList);
-        }
-        log.debug("gamelist empty");
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    }
+    @Autowired private IActivityService activityService;
 
     /*Postman parameters
     {
@@ -68,7 +30,11 @@ public class ReviewController {
             "userScore":8
     }*/
     @PostMapping("/gameSelected/create")
-    public ResponseEntity<String> createGame(@RequestBody ReviewDTO reviewDTO) {
+    public ResponseEntity<String> createGame(
+            @AuthenticationPrincipal String username, @RequestBody ReviewDTO reviewDTO) {
+        // l'autore della review e' sempre l'utente autenticato: un username diverso nel body
+        // permetterebbe di pubblicare recensioni a nome di chiunque
+        reviewDTO.setUsername(username);
         // creo review in mongo
         Review review = review2Service.createReview(reviewDTO);
         if (review == null) {
@@ -78,6 +44,13 @@ public class ReviewController {
         // creo su neo4j
         ResponseEntity<String> response = reviewNeo4jService.createReview(review.getId());
         if (response.getStatusCode() == HttpStatus.CREATED) {
+            // registrata solo ora che la review esiste in entrambi gli store: se la review viene
+            // poi rollbackata sotto (Neo4j fallito) non deve comparire nel feed
+            activityService.recordReview(
+                    reviewDTO.getUsername(),
+                    reviewDTO.getTitle(),
+                    review.getId(),
+                    reviewDTO.getUserScore());
             return response;
         }
         // cancellare review in mongo
@@ -88,19 +61,11 @@ public class ReviewController {
     }
 
     @DeleteMapping("/reviewSelected/delete/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> deleteGame(
             @PathVariable String userId, @RequestParam String reviewId) {
-        // controllo se si tratta di admin
-        ResponseEntity<String> responseEntity = iLoginService.roleUser(userId);
-        if (responseEntity.getStatusCode() != HttpStatus.OK) {
-            log.warn(
-                    "Utente {} senza permessi ha tentato di eliminare la review {}",
-                    userId,
-                    reviewId);
-            return responseEntity;
-        }
         // cancello su mongo
-        responseEntity = review2Service.deleteReview(reviewId);
+        ResponseEntity<String> responseEntity = review2Service.deleteReview(reviewId);
         if (responseEntity.getStatusCode() != HttpStatus.OK) {
             return responseEntity;
         }

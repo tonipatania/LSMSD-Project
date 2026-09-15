@@ -1,6 +1,6 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
-import it.unipi.lsmsd.gamehub.DTO.*;
+import it.unipi.lsmsd.gamehub.DTO.ReviewDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
@@ -8,6 +8,7 @@ import it.unipi.lsmsd.gamehub.repository.LoginRepository;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -32,40 +33,6 @@ public class ReviewService implements IReviewService {
     @Autowired private IGameService gameService;
 
     @Override
-    public List<Review> retrieveReviewByTitle(ReviewDTO reviewDTO) {
-        try {
-            return reviewRepository.findByTitle(reviewDTO.getTitle());
-        } catch (Exception e) {
-            log.error("Errore in retrieveReviewByTitle", e);
-            return null;
-        }
-    }
-
-    @Override
-    public List<ReviewDTOAggregation> retrieveAggregateFirstAndLastUserLike() {
-        try {
-            List<ReviewDTOAggregation> reviewList = reviewRepository.findAggregation2();
-            if (!reviewList.isEmpty()) {
-                return reviewList;
-            }
-            return null;
-        } catch (Exception e) {
-            log.error("Errore in retrieveAggregateFirstAndLastUserLike", e);
-            return null;
-        }
-    }
-
-    @Override
-    public List<ReviewDTOAggregation2> findAggregation3() {
-        try {
-            return reviewRepository.findAggregation3();
-        } catch (Exception e) {
-            log.error("Errore in findAggregation3", e);
-            return null;
-        }
-    }
-
-    @Override
     public List<Review> retrieveByTitleOrderByLikeCountDesc(ReviewDTO reviewDTO, int limit) {
         Pageable pageable = PageRequest.of(0, limit);
         return reviewRepository.findByTitleOrderByLikeCountDesc(reviewDTO.getTitle(), pageable);
@@ -81,6 +48,7 @@ public class ReviewService implements IReviewService {
             if (game != null && loginRepository.findByUsername(reviewDTO.getUsername()) != null) {
                 ModelMapper modelMapper = new ModelMapper();
                 Review review = modelMapper.map(reviewDTO, Review.class);
+                review.setCreatedAt(Instant.now());
                 // inserisco il model nel db
 
                 reviewRepository.save(review);

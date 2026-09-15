@@ -62,10 +62,14 @@ public class EmailService implements IEmailService {
 
         Map<String, Object> body =
                 Map.of(
-                        "sender", Map.of("name", SENDER_DISPLAY_NAME, "email", from),
-                        "to", List.of(Map.of("email", toEmail)),
-                        "subject", "Conferma il tuo account GameHub",
-                        "textContent", text);
+                        "sender",
+                        Map.of("name", SENDER_DISPLAY_NAME, "email", from),
+                        "to",
+                        List.of(Map.of("email", toEmail)),
+                        "subject",
+                        "Conferma il tuo account GameHub",
+                        "textContent",
+                        text);
 
         restClient
                 .post()

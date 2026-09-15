@@ -1,8 +1,6 @@
 package it.unipi.lsmsd.gamehub.service;
 
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
-import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation;
-import it.unipi.lsmsd.gamehub.DTO.GameDTOAggregation2;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import java.util.List;
@@ -15,10 +13,6 @@ public interface IGameService {
             String name, List<String> genres, Integer avgScore, Pageable pageable);
 
     public List<String> findDistinctGenres();
-
-    public List<GameDTOAggregation> retrieveAggregateGamesByGenresAndSortByScore();
-
-    public List<GameDTOAggregation2> findAggregation4();
 
     // public List<Review> updateGameReview(ReviewDTO reviewDTO, int limit);
 

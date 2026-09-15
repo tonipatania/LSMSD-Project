@@ -1,9 +1,11 @@
 package it.unipi.lsmsd.gamehub.controller;
 
+import it.unipi.lsmsd.gamehub.DTO.ActivityDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
+import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import java.util.List;
@@ -14,6 +16,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RequestMapping("user")
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
     @Autowired private IUserNeo4jService userNeo4jService;
     @Autowired private ILoginService iLoginService;
+    @Autowired private IActivityService activityService;
 
     // to load games from mongo to neo4j
     @PostMapping("/loadgames")
@@ -65,8 +70,11 @@ public class UserController {
     }
 
     // cambiato path
+    // username va sempre preso dal token, mai da un parametro client: altrimenti chiunque puo'
+    // modificare la wishlist di un altro utente passando uno username a piacere
     @PostMapping("wishlist/addWishlistGame")
-    public ResponseEntity<String> addGameToWishlist(@RequestParam String username, String name) {
+    public ResponseEntity<String> addGameToWishlist(
+            @AuthenticationPrincipal String username, String name) {
         Boolean result = userNeo4jService.addGameToWishlist(username, name);
         // il service torna null quando la query fallisce: il null va intercettato prima di ogni
         // uso come boolean, altrimenti l'unboxing solleva NullPointerException e il ramo 500
@@ -82,7 +90,8 @@ public class UserController {
 
     // cambiato path
     @PostMapping("wishlist/deleteWishlistGame")
-    public ResponseEntity<String> deleteGameToWishlist(@RequestParam String username, String name) {
+    public ResponseEntity<String> deleteGameToWishlist(
+            @AuthenticationPrincipal String username, String name) {
         Boolean result = userNeo4jService.deleteGameToWishlist(username, name);
         if (result == null) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -111,6 +120,14 @@ public class UserController {
         return ResponseEntity.ok(userNeo4jService.getFollowedUserPage(username, pageable));
     }
 
+    // feed "attivita' amici" della Home: cosa hanno fatto di recente le persone seguite
+    // (aggiunte alla wishlist, nuove review), piu' recenti prima
+    @GetMapping("/activity/friends")
+    public ResponseEntity<Page<ActivityDTO>> getFriendsActivity(
+            @RequestParam String username, @PageableDefault(size = 15) Pageable pageable) {
+        return ResponseEntity.ok(activityService.getFriendsActivity(username, pageable));
+    }
+
     @GetMapping("/search")
     public ResponseEntity<Object> searchUsers(
             @RequestParam String query, @RequestParam String username) {
@@ -132,7 +149,8 @@ public class UserController {
     }
 
     @PostMapping("/reviewSelected/addLikeReview")
-    public ResponseEntity<String> addLikeToReview(@RequestParam String username, String id) {
+    public ResponseEntity<String> addLikeToReview(
+            @AuthenticationPrincipal String username, String id) {
         Boolean likeAdded = userNeo4jService.addLikeToReview(username, id);
         if (id != null && likeAdded != null && likeAdded) {
             return ResponseEntity.ok("added like");
@@ -143,7 +161,8 @@ public class UserController {
     }
 
     @PostMapping("/reviewSelected/removeLikeReview")
-    public ResponseEntity<String> removeLikeFromReview(@RequestParam String username, String id) {
+    public ResponseEntity<String> removeLikeFromReview(
+            @AuthenticationPrincipal String username, String id) {
         Boolean likeRemoved = userNeo4jService.removeLikeFromReview(username, id);
         if (id != null && likeRemoved != null && likeRemoved) {
             return ResponseEntity.ok("removed like");
@@ -162,23 +181,21 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    // funzione admin
+    // funzione admin: il ruolo va verificato sull'utente autenticato (claim del JWT), non su uno
+    // userId nel path, altrimenti basta conoscere l'id di un admin per ottenere i suoi permessi
     @GetMapping("/countUser/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Object> countGame(@PathVariable String userId) {
-        ResponseEntity<String> responseEntity = iLoginService.roleUser(userId);
-        if (responseEntity.getStatusCode() != HttpStatus.OK) {
-            return ResponseEntity.status(responseEntity.getStatusCode())
-                    .body(responseEntity.getBody());
-        }
-
         long count = userNeo4jService.countUserDocument();
         return ResponseEntity.ok(count);
     }
 
     // cambiato path
+    // followerUsername va sempre preso dal token: e' l'utente che sta compiendo l'azione
     @PostMapping("userSelected/follow")
     public ResponseEntity<String> followUser(
-            @RequestParam String followerUsername, @RequestParam String followedUsername) {
+            @AuthenticationPrincipal String followerUsername,
+            @RequestParam String followedUsername) {
         Boolean result = userNeo4jService.followUser(followerUsername, followedUsername);
         if (result != null && result) {
             return ResponseEntity.ok("Followed successfully");
@@ -191,7 +208,8 @@ public class UserController {
     // cambiato path
     @PostMapping("userSelected/unfollow")
     public ResponseEntity<String> unfollowUser(
-            @RequestParam String followerUsername, @RequestParam String followedUsername) {
+            @AuthenticationPrincipal String followerUsername,
+            @RequestParam String followedUsername) {
         Boolean result = userNeo4jService.unfollowUser(followerUsername, followedUsername);
         if (result != null && result) {
             return ResponseEntity.ok("Unfollowed successfully");
@@ -202,9 +220,11 @@ public class UserController {
     }
 
     // update username on the basis of old username
+    // username (l'account da rinominare) va sempre preso dal token: altrimenti chiunque
+    // autenticato puo' rinominare un account a piacere passando il suo username come parametro
     @PatchMapping("/updateUser")
     public ResponseEntity<String> updateUser(
-            @RequestParam String username, @RequestParam String newUsername) {
+            @AuthenticationPrincipal String username, @RequestParam String newUsername) {
         // aggiorno utente su mongo
         ResponseEntity<String> responseEntity = iLoginService.updateUser(username, newUsername);
         if (responseEntity.getStatusCode() != HttpStatus.OK) {

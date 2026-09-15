@@ -154,7 +154,7 @@ class ReviewControllerIT extends IntegrationTestSupport {
     }
 
     @Test
-    void deleteReview_userWithoutAdminRole_returnsUnauthorizedAndKeepsReview() throws Exception {
+    void deleteReview_userWithoutAdminRole_returnsForbiddenAndKeepsReview() throws Exception {
         Game game = seedGame();
         User plainUser = seedUser();
 
@@ -171,7 +171,7 @@ class ReviewControllerIT extends IntegrationTestSupport {
                         delete("/review/reviewSelected/delete/{userId}", plainUser.getId())
                                 .param("reviewId", review.getId())
                                 .header("Authorization", "Bearer " + token))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
 
         assertThat(mongoTemplate.findById(review.getId(), Review.class)).isNotNull();
     }

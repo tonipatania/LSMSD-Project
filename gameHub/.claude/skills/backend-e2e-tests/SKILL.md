@@ -65,17 +65,32 @@ assuming:
   `LoginController.registration()`), or seed the node directly via `neo4jClient` - or the follow
   step will silently "succeed" while doing nothing - assert the follow relationship actually landed
   (query `neo4jClient`, or call `GET /user/followedUser`) rather than trusting the 200.
-- **The `{userId}`-suffixed "admin" endpoints are not gated by `ROLE_ADMIN`.** Endpoints like
-  `POST /game/create/{userId}` or `DELETE /review/reviewSelected/delete/{userId}` only require
-  *any* authenticated JWT at the Spring Security layer; the actual admin check is an
-  application-level lookup of the Mongo `User` document whose `_id` equals the `{userId}` path
-  segment, requiring its `role` field to be non-null. The JWT's own subject/role claims are
-  irrelevant to this check. To exercise the admin-allowed branch, seed a Mongo `User` with a
-  non-null `role` and use *that user's Mongo id* as `{userId}` - not the JWT subject. Only
-  `POST /user/loadgames` is a real `hasRole("ADMIN")` check at the Security layer (test it by
-  minting a token with `authenticatedAs(username, "ADMIN")` vs `"USER"` and asserting 200 vs 403).
-  `/user/sync` used to be the other one but was removed - it let anyone with an ADMIN token trigger
-  an unbounded full Mongo→Neo4j user resync on demand, which had no place in a production endpoint.
+- **The `{userId}`-suffixed "admin" endpoints are gated by `@PreAuthorize("hasRole('ADMIN')")`,
+  on the caller's own JWT role claim.** Endpoints like `POST /game/create/{userId}` or
+  `DELETE /review/reviewSelected/delete/{userId}` keep `{userId}` in the path for logging only -
+  it plays no role in the authorization decision. To exercise the admin-allowed branch, mint the
+  token with `authenticatedAs(username, "ADMIN")`; a `"USER"`-role token gets 403 regardless of
+  what `{userId}` is passed. (Previously the admin check was an application-level lookup of the
+  Mongo `User` document whose `_id` equalled the `{userId}` path segment, completely ignoring the
+  caller's own identity/role - that let any authenticated user reach admin functionality just by
+  discovering another user's Mongo id, e.g. via `GET /user/search`. Fixed by moving the check to
+  `@PreAuthorize` on the controller methods; see `SecurityConfig`'s `@EnableMethodSecurity`.)
+  `POST /user/loadgames` was and remains a real `hasRole("ADMIN")` check at the Security-filter
+  layer instead of `@PreAuthorize` (test it the same way: `authenticatedAs(username, "ADMIN")` vs
+  `"USER"`, asserting 200 vs 403). `/user/sync` used to be another admin endpoint but was removed -
+  it let anyone with an ADMIN token trigger an unbounded full Mongo→Neo4j user resync on demand,
+  which had no place in a production endpoint.
+- **Every mutating endpoint that acts on a specific user (wishlist, review likes, follow/unfollow,
+  username rename, review creation) takes the actor's identity from `@AuthenticationPrincipal`,
+  never from a request parameter.** `POST /user/wishlist/addWishlistGame`,
+  `POST /user/userSelected/follow` (the `followerUsername` side), `PATCH /user/updateUser` (the
+  `username` being renamed), `POST /review/gameSelected/create` (the review's author), etc. all
+  ignore any client-supplied value for "who is doing this" and use the authenticated JWT subject
+  instead - so a journey step exercising one of these must authenticate *as* the user whose data
+  it expects to change; authenticating as one user and passing another user's identity as a
+  parameter is a no-op/IDOR test, not a valid journey step. (Previously several of these trusted
+  the client-supplied value outright, letting any authenticated user act on any other user's
+  wishlist/likes/follows/account/reviews.)
 
 ## Before calling a task done
 

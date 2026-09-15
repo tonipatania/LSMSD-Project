@@ -46,8 +46,7 @@ class LoginControllerTest {
 
     @Test
     void login_validCredentials_returnsOkWithAuthResponse() throws Exception {
-        AuthResponse success =
-                new AuthResponse(true, null, null, "Lunark", "jwt", "USER");
+        AuthResponse success = new AuthResponse(true, null, null, "Lunark", "jwt", "USER");
         when(loginService.authenticate(any(LoginDTO.class))).thenReturn(success);
 
         mockMvc.perform(
@@ -121,8 +120,7 @@ class LoginControllerTest {
     }
 
     @Test
-    void registration_passwordMissingUppercaseAndSpecialChar_returnsBadRequest()
-            throws Exception {
+    void registration_passwordMissingUppercaseAndSpecialChar_returnsBadRequest() throws Exception {
         RegistrationDTO weakPassword =
                 new RegistrationDTO(
                         "Mario", "Rossi", "mariorossi", "weakpassword", "mario@test.it");

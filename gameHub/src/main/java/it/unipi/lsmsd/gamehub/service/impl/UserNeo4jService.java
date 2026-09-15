@@ -3,6 +3,7 @@ package it.unipi.lsmsd.gamehub.service.impl;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.*;
 import it.unipi.lsmsd.gamehub.repository.*;
+import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import java.time.Duration;
@@ -45,6 +46,14 @@ public class UserNeo4jService implements IUserNeo4jService {
     private static final int SUGGESTIONS_LIMIT = 10;
     private static final int POPULAR_POOL_SIZE = 100;
 
+    // reti di sicurezza per le varianti non paginate di wishlist/followedUser: entrambe
+    // restituiscono la lista intera (serve per i controlli di appartenenza lato client, es. "sto
+    // gia' seguendo questo utente?"), quindi non si puo' troncare la query condivisa con
+    // getUserWishlistPage/deleteGameToWishlist/unfollowUser senza romperne la correttezza. Il
+    // taglio avviene qui, dopo la query, solo sull'endpoint non paginato.
+    private static final int WISHLIST_UNPAGINATED_CAP = 500;
+    private static final int FOLLOWED_UNPAGINATED_CAP = 2000;
+
     private static final String POPULAR_CACHE_KEY = "gamehub:suggestions:popular";
     private static final Duration POPULAR_CACHE_TTL = Duration.ofMinutes(10);
     private static final String FRIENDS_CACHE_KEY_PREFIX = "gamehub:suggestions:friends:";
@@ -57,6 +66,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH);
 
     @Autowired private IGameService gameService;
+    @Autowired private IActivityService activityService;
 
     @Override
     public void SyncUser() {
@@ -88,9 +98,13 @@ public class UserNeo4jService implements IUserNeo4jService {
             // profilo raggiunto da li: la card prometteva giochi in comune e il profilo diceva
             // "nessun gioco". La sezione del profilo si chiama "Wishlist pubblica", quindi la
             // lettura pubblica e' il comportamento coerente.
-            return enrichFromMongo(
+            List<GameNeo4j> graphGames =
                     userNeo4jRepository.findByUsername(
-                            resolveWishlistOwner(username, friendUsername)));
+                            resolveWishlistOwner(username, friendUsername));
+            if (graphGames.size() > WISHLIST_UNPAGINATED_CAP) {
+                graphGames = graphGames.subList(0, WISHLIST_UNPAGINATED_CAP);
+            }
+            return enrichFromMongo(graphGames);
         } catch (Exception e) {
             log.error("Errore in getUserWishlist", e);
             return null;
@@ -229,6 +243,7 @@ public class UserNeo4jService implements IUserNeo4jService {
             UserNeo4j userNeo4j = userNeo4jRepository.getUser(username);
             if (gameNeo4j != null && userNeo4j != null) {
                 userNeo4jRepository.addGameToUser(username, name);
+                activityService.recordWishlistAdd(username, name);
                 return true;
             }
 
@@ -263,7 +278,11 @@ public class UserNeo4jService implements IUserNeo4jService {
     @Override
     public List<UserNeo4j> getFollowedUser(String username) {
         try {
-            return userNeo4jRepository.findFollowedUsers(username);
+            List<UserNeo4j> followed = userNeo4jRepository.findFollowedUsers(username);
+            if (followed.size() > FOLLOWED_UNPAGINATED_CAP) {
+                return followed.subList(0, FOLLOWED_UNPAGINATED_CAP);
+            }
+            return followed;
         } catch (Exception e) {
             log.error("Errore in getFollowedUser", e);
             return null;
