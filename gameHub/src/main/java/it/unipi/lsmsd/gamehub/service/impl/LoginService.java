@@ -9,7 +9,8 @@ import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.service.IEmailService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
-import java.util.Objects;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -76,12 +77,20 @@ public class LoginService implements ILoginService {
         if (stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$")) {
             return passwordEncoder.matches(rawPassword, stored);
         }
-        if (!Objects.equals(stored, rawPassword)) {
+        if (rawPassword == null || !constantTimeEquals(stored, rawPassword)) {
             return false;
         }
         user.setPassword(passwordEncoder.encode(rawPassword));
         loginRepository.save(user);
         return true;
+    }
+
+    // String.equals() si ferma al primo carattere diverso: il tempo di risposta rivelerebbe
+    // quanti caratteri iniziali dell'attaccante sono corretti (timing attack). Qui riguarda solo
+    // le password legacy del seed dataset non ancora migrate a BCrypt (vedi sopra).
+    private boolean constantTimeEquals(String a, String b) {
+        return MessageDigest.isEqual(
+                a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
     }
 
     // roleUser() considera admin qualunque utente con un ruolo valorizzato
