@@ -18,6 +18,7 @@ import it.unipi.lsmsd.gamehub.DTO.GameDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.security.SecurityConfig;
+import it.unipi.lsmsd.gamehub.security.TokenBlacklistService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
 import java.util.List;
@@ -62,6 +63,9 @@ class GameControllerTest {
     // JwtService bean, even though @AutoConfigureMockMvc(addFilters = false) means it never runs:
     // without this @MockBean, context startup fails with a NoSuchBeanDefinitionException.
     @MockBean private JwtService jwtService;
+
+    // JwtAuthenticationFilter (wired through SecurityConfig) also needs a TokenBlacklistService
+    @MockBean private TokenBlacklistService tokenBlacklistService;
 
     // With addFilters = false, JwtAuthenticationFilter never runs, so
     // SecurityMockMvcRequestPostProcessors.authentication() (which only bridges into
