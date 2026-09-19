@@ -6,6 +6,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +45,9 @@ public class JwtService {
         log.debug("Generazione token JWT per l'utente {}", username);
         return Jwts.builder()
                 .subject(username)
+                // jti univoco per token: e' la chiave con cui TokenBlacklistService lo marca
+                // come revocato al logout, prima della scadenza naturale.
+                .id(UUID.randomUUID().toString())
                 .claim("role", role)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expirationMs))
