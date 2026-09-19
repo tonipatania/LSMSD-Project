@@ -35,4 +35,10 @@ public class User {
 
     private String verificationToken;
     private Long verificationTokenExpiry;
+
+    // Del token di reset password si salva solo l'hash SHA-256: chi leggesse il database non
+    // potrebbe usarlo per reimpostare la password di nessuno (il token in chiaro esiste solo
+    // nell'email inviata all'utente).
+    private String passwordResetTokenHash;
+    private Long passwordResetTokenExpiry;
 }

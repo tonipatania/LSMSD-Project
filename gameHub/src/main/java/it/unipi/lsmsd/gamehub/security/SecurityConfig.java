@@ -72,7 +72,12 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                                         .permitAll()
-                                        .requestMatchers("/login", "/signup", "/confirm-email")
+                                        .requestMatchers(
+                                                "/login",
+                                                "/signup",
+                                                "/confirm-email",
+                                                "/forgot-password",
+                                                "/reset-password")
                                         .permitAll()
                                         .requestMatchers("/actuator/health")
                                         .permitAll()

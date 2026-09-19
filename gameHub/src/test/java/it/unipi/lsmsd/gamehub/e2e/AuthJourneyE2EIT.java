@@ -6,10 +6,15 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.not;
 
 import io.restassured.http.ContentType;
+import it.unipi.lsmsd.gamehub.DTO.ForgotPasswordDTO;
 import it.unipi.lsmsd.gamehub.DTO.LoginDTO;
 import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
+import it.unipi.lsmsd.gamehub.DTO.ResetPasswordDTO;
 import it.unipi.lsmsd.gamehub.model.User;
 import it.unipi.lsmsd.gamehub.support.E2ETestSupport;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -81,5 +86,69 @@ class AuthJourneyE2EIT extends E2ETestSupport {
                 .then()
                 .statusCode(401)
                 .body("success", equalTo(false));
+    }
+
+    @Test
+    void forgotPassword_unknownEmail_returnsOkWithoutRevealingThatNoAccountExists() {
+        anonymous()
+                .contentType(ContentType.JSON)
+                .body(new ForgotPasswordDTO("ghost@test.it"))
+                .post("/forgot-password")
+                .then()
+                .statusCode(200);
+    }
+
+    @Test
+    void resetPassword_withValidToken_changesThePasswordAndTheTokenWorksOnlyOnce()
+            throws Exception {
+        RegistrationDTO registration =
+                new RegistrationDTO("Mario", "Rossi", "mariorossi", "Passw0rd!", "mario@test.it");
+        anonymous().contentType(ContentType.JSON).body(registration).post("/signup");
+        User user =
+                mongoTemplate.findOne(
+                        Query.query(Criteria.where("username").is("mariorossi")), User.class);
+        anonymous().queryParam("token", user.getVerificationToken()).get("/confirm-email");
+
+        // Il token in chiaro esiste solo nell'email (su Mongo c'e' solo il suo hash), che nei test
+        // non si puo' leggere: si salva l'hash di un token noto, come farebbe /forgot-password.
+        user =
+                mongoTemplate.findOne(
+                        Query.query(Criteria.where("username").is("mariorossi")), User.class);
+        user.setPasswordResetTokenHash(
+                HexFormat.of()
+                        .formatHex(
+                                MessageDigest.getInstance("SHA-256")
+                                        .digest("known-token".getBytes(StandardCharsets.UTF_8))));
+        user.setPasswordResetTokenExpiry(System.currentTimeMillis() + 60_000);
+        mongoTemplate.save(user);
+
+        ResetPasswordDTO reset = new ResetPasswordDTO("known-token", "NewPassw0rd!");
+        anonymous()
+                .contentType(ContentType.JSON)
+                .body(reset)
+                .post("/reset-password")
+                .then()
+                .statusCode(200);
+
+        anonymous()
+                .contentType(ContentType.JSON)
+                .body(new LoginDTO("mariorossi", "Passw0rd!"))
+                .post("/login")
+                .then()
+                .statusCode(401);
+        anonymous()
+                .contentType(ContentType.JSON)
+                .body(new LoginDTO("mariorossi", "NewPassw0rd!"))
+                .post("/login")
+                .then()
+                .statusCode(200)
+                .body("success", equalTo(true));
+
+        anonymous()
+                .contentType(ContentType.JSON)
+                .body(reset)
+                .post("/reset-password")
+                .then()
+                .statusCode(400);
     }
 }

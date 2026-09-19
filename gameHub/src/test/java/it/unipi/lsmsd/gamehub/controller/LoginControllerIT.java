@@ -162,6 +162,8 @@ class LoginControllerIT extends IntegrationTestSupport {
                         null,
                         true,
                         null,
+                        null,
+                        null,
                         null);
         mongoTemplate.save(user);
 
@@ -193,6 +195,8 @@ class LoginControllerIT extends IntegrationTestSupport {
                         "lunark@test.it",
                         null,
                         true,
+                        null,
+                        null,
                         null,
                         null);
         mongoTemplate.save(user);

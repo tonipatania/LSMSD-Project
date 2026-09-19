@@ -2,7 +2,9 @@ package it.unipi.lsmsd.gamehub.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -17,9 +19,14 @@ import it.unipi.lsmsd.gamehub.repository.LoginRepository;
 import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.service.IEmailService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,6 +34,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class LoginServiceTest {
@@ -37,6 +45,19 @@ class LoginServiceTest {
     @Mock private IEmailService emailService;
 
     @InjectMocks private LoginService loginService;
+
+    @BeforeEach
+    void setUp() {
+        // il valore arriva da @Value, che @InjectMocks non risolve
+        ReflectionTestUtils.setField(loginService, "passwordResetExpirationMs", 3_600_000L);
+    }
+
+    private static String sha256Hex(String value) throws Exception {
+        return HexFormat.of()
+                .formatHex(
+                        MessageDigest.getInstance("SHA-256")
+                                .digest(value.getBytes(StandardCharsets.UTF_8)));
+    }
 
     private User bcryptUser() {
         User user = new User();
@@ -435,5 +456,120 @@ class LoginServiceTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(loginRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void requestPasswordReset_unknownEmail_doesNothing() {
+        when(loginRepository.findByEmail("ghost@example.com")).thenReturn(null);
+
+        loginService.requestPasswordReset("ghost@example.com");
+
+        verify(loginRepository, never()).save(any(User.class));
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void requestPasswordReset_unconfirmedAccount_doesNothing() {
+        User user = bcryptUser();
+        user.setEnabled(false);
+        when(loginRepository.findByEmail("mario@example.com")).thenReturn(user);
+
+        loginService.requestPasswordReset("mario@example.com");
+
+        verify(loginRepository, never()).save(any(User.class));
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void requestPasswordReset_confirmedAccount_storesOnlyTheTokenHashAndEmailsTheToken()
+            throws Exception {
+        User user = bcryptUser();
+        user.setEnabled(true);
+        user.setEmail("mario@example.com");
+        when(loginRepository.findByEmail("mario@example.com")).thenReturn(user);
+        long before = System.currentTimeMillis();
+
+        loginService.requestPasswordReset("mario@example.com");
+
+        ArgumentCaptor<String> tokenCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailService)
+                .sendPasswordResetEmail(
+                        eq("mario@example.com"), eq("Lunark"), tokenCaptor.capture());
+        String token = tokenCaptor.getValue();
+        assertThat(token).hasSizeGreaterThanOrEqualTo(43);
+        verify(loginRepository).save(user);
+        assertThat(user.getPasswordResetTokenHash()).isEqualTo(sha256Hex(token));
+        assertThat(user.getPasswordResetTokenHash()).isNotEqualTo(token);
+        assertThat(user.getPasswordResetTokenExpiry()).isGreaterThanOrEqualTo(before + 3_600_000L);
+    }
+
+    @Test
+    void requestPasswordReset_seedUserWithoutEnabledFlag_sendsEmail() {
+        User user = bcryptUser();
+        user.setEnabled(null);
+        user.setEmail("seed@example.com");
+        when(loginRepository.findByEmail("seed@example.com")).thenReturn(user);
+
+        loginService.requestPasswordReset("seed@example.com");
+
+        verify(emailService).sendPasswordResetEmail(eq("seed@example.com"), eq("Lunark"), any());
+    }
+
+    @Test
+    void requestPasswordReset_emailSendFails_doesNotPropagate() {
+        User user = bcryptUser();
+        user.setEnabled(true);
+        user.setEmail("mario@example.com");
+        when(loginRepository.findByEmail("mario@example.com")).thenReturn(user);
+        doThrow(new RuntimeException("brevo down"))
+                .when(emailService)
+                .sendPasswordResetEmail(anyString(), anyString(), anyString());
+
+        loginService.requestPasswordReset("mario@example.com");
+
+        verify(loginRepository).save(user);
+    }
+
+    @Test
+    void resetPassword_unknownToken_returnsBadRequest() throws Exception {
+        when(loginRepository.findByPasswordResetTokenHash(sha256Hex("nope"))).thenReturn(null);
+
+        ResponseEntity<String> response = loginService.resetPassword("nope", "NewPassw0rd!");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(loginRepository, never()).save(any(User.class));
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void resetPassword_expiredToken_returnsGoneAndClearsTheToken() throws Exception {
+        User user = bcryptUser();
+        user.setPasswordResetTokenHash(sha256Hex("tok-123"));
+        user.setPasswordResetTokenExpiry(System.currentTimeMillis() - 1_000);
+        when(loginRepository.findByPasswordResetTokenHash(sha256Hex("tok-123"))).thenReturn(user);
+
+        ResponseEntity<String> response = loginService.resetPassword("tok-123", "NewPassw0rd!");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.GONE);
+        assertThat(user.getPasswordResetTokenHash()).isNull();
+        assertThat(user.getPassword()).isEqualTo("$2a$10$hashedvalue");
+        verifyNoInteractions(passwordEncoder);
+    }
+
+    @Test
+    void resetPassword_validToken_setsHashedPasswordAndConsumesTheToken() throws Exception {
+        User user = bcryptUser();
+        user.setPasswordResetTokenHash(sha256Hex("tok-123"));
+        user.setPasswordResetTokenExpiry(System.currentTimeMillis() + 60_000);
+        when(loginRepository.findByPasswordResetTokenHash(sha256Hex("tok-123"))).thenReturn(user);
+        when(passwordEncoder.encode("NewPassw0rd!")).thenReturn("$2a$10$newhash");
+
+        ResponseEntity<String> response = loginService.resetPassword("tok-123", "NewPassw0rd!");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(user.getPassword()).isEqualTo("$2a$10$newhash");
+        assertThat(user.getPasswordResetTokenHash()).isNull();
+        assertThat(user.getPasswordResetTokenExpiry()).isNull();
+        verify(loginRepository).save(user);
     }
 }

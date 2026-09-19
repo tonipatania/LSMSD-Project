@@ -11,6 +11,10 @@ import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +39,11 @@ public class LoginService implements ILoginService {
 
     @Value("${gamehub.email-verification.expiration-ms}")
     private long verificationExpirationMs;
+
+    @Value("${gamehub.password-reset.expiration-ms}")
+    private long passwordResetExpirationMs;
+
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
     public AuthResponse authenticate(LoginDTO loginDTO) {
@@ -254,5 +263,73 @@ public class LoginService implements ILoginService {
         user.setEnabled(true);
         loginRepository.save(user);
         return new ResponseEntity<>("Account confermato con successo", HttpStatus.OK);
+    }
+
+    @Override
+    public void requestPasswordReset(String email) {
+        User user = loginRepository.findByEmail(email);
+        // Nessun errore verso il chiamante se l'email non esiste (o l'account non e' ancora
+        // confermato): il controller risponde sempre allo stesso modo, altrimenti l'endpoint
+        // permetterebbe di scoprire quali email sono registrate. Un account non confermato deve
+        // prima completare la conferma, come per il login.
+        if (user == null || Boolean.FALSE.equals(user.getEnabled())) {
+            log.info("Reset password richiesto per un'email senza account confermato");
+            return;
+        }
+
+        // 256 bit da SecureRandom, non un UUID: il token da' accesso all'account, quindi deve
+        // essere imprevedibile.
+        byte[] randomBytes = new byte[32];
+        secureRandom.nextBytes(randomBytes);
+        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+
+        // Una nuova richiesta sostituisce l'eventuale token precedente, che smette di funzionare.
+        user.setPasswordResetTokenHash(hashToken(token));
+        user.setPasswordResetTokenExpiry(System.currentTimeMillis() + passwordResetExpirationMs);
+        loginRepository.save(user);
+
+        // Un fallimento dell'invio viene solo loggato: se lo si propagasse, la risposta
+        // distinguerebbe le email registrate da quelle sconosciute.
+        try {
+            emailService.sendPasswordResetEmail(user.getEmail(), user.getUsername(), token);
+        } catch (Exception e) {
+            log.error("Invio dell'email di reset password fallito per {}", user.getUsername(), e);
+        }
+    }
+
+    @Override
+    public ResponseEntity<String> resetPassword(String token, String newPassword) {
+        User user = loginRepository.findByPasswordResetTokenHash(hashToken(token));
+        if (user == null) {
+            return new ResponseEntity<>(
+                    "Link di reimpostazione non valido o gia' utilizzato", HttpStatus.BAD_REQUEST);
+        }
+        if (user.getPasswordResetTokenExpiry() == null
+                || user.getPasswordResetTokenExpiry() < System.currentTimeMillis()) {
+            user.setPasswordResetTokenHash(null);
+            user.setPasswordResetTokenExpiry(null);
+            loginRepository.save(user);
+            return new ResponseEntity<>(
+                    "Link di reimpostazione scaduto, richiedine uno nuovo", HttpStatus.GONE);
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        // Il token e' monouso. A differenza di confirmEmail() puo' essere invalidato subito: qui
+        // il link apre una pagina del frontend e la modifica parte da una POST, che uno scanner
+        // di link email non esegue.
+        user.setPasswordResetTokenHash(null);
+        user.setPasswordResetTokenExpiry(null);
+        loginRepository.save(user);
+        return new ResponseEntity<>("Password aggiornata con successo", HttpStatus.OK);
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 e' garantito da ogni JVM: non puo' succedere
+            throw new IllegalStateException(e);
+        }
     }
 }

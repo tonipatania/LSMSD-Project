@@ -24,7 +24,7 @@ gameHub is a Spring Boot 3.2 / Java 17 REST backend (University of Pisa LSMSD co
 ./mvnw test -Dtest=GameHubApplicationTests#contextLoads
 ```
 
-The app needs a running MongoDB (`mongodb://localhost:27017/game`) and Neo4j (`bolt://localhost:7687`) instance — see `src/main/resources/application.properties` for connection settings (Neo4j credentials are currently hardcoded there for local dev). `gamehub.jwt.secret` should be overridden via the `GAMEHUB_JWT_SECRET` env var outside local dev.
+The app needs a running MongoDB (`mongodb://localhost:27017/game`) and Neo4j (`bolt://localhost:7687`) instance — see `src/main/resources/application.properties` for connection settings (Neo4j credentials are currently hardcoded there for local dev). `gamehub.jwt.secret` should be overridden via the `GAMEHUB_JWT_SECRET` env var outside local dev — with the `prod` Spring profile active (`SPRING_PROFILES_ACTIVE=prod`, set on the hosting provider), `JwtService` refuses to start if it's still the default value (see `.env.example`).
 
 There is no linter/formatter configured in this project.
 
@@ -83,7 +83,7 @@ DTOs (`DTO/`) are used both for request bodies (`LoginDTO`, `RegistrationDTO`) a
 
 ## Auth
 
-Stateless JWT auth via `JwtAuthenticationFilter` (reads `Authorization: Bearer <token>`, populates `SecurityContextHolder`) + `JwtService` (issue/parse). `SecurityConfig` disables CSRF and sessions, permits `/login`, `/signup`, `/actuator/health`, and CORS preflight (`OPTIONS`) without auth, requires `ROLE_ADMIN` for `/user/loadgames`, and requires authentication for everything else. Passwords are hashed with `BCryptPasswordEncoder`.
+Stateless JWT auth via `JwtAuthenticationFilter` (reads `Authorization: Bearer <token>`, populates `SecurityContextHolder`) + `JwtService` (issue/parse). `SecurityConfig` disables CSRF and sessions, permits `/login`, `/signup`, `/confirm-email`, `/forgot-password`, `/reset-password`, `/actuator/health`, and CORS preflight (`OPTIONS`) without auth, requires `ROLE_ADMIN` for `/user/loadgames`, and requires authentication for everything else. Passwords are hashed with `BCryptPasswordEncoder`.
 
 ## Data model notes
 

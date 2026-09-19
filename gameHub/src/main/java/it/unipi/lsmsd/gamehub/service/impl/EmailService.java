@@ -60,6 +60,32 @@ public class EmailService implements IEmailService {
                         + " ignora questa email.\n\n"
                         + "Questa e' un'email automatica: non rispondere a questo indirizzo.";
 
+        send(toEmail, "Conferma il tuo account GameHub", text);
+        log.info("Email di conferma inviata a {}", toEmail);
+    }
+
+    @Override
+    public void sendPasswordResetEmail(String toEmail, String username, String token) {
+        String resetLink = frontendBaseUrl + "/reset-password?token=" + token;
+        String text =
+                "Ciao "
+                        + username
+                        + ",\n\n"
+                        + "Abbiamo ricevuto una richiesta di reimpostazione della password del tuo"
+                        + " account GameHub. Puoi sceglierne una nuova cliccando sul link"
+                        + " seguente:\n\n"
+                        + resetLink
+                        + "\n\n"
+                        + "Il link scade tra 1 ora. Se non hai richiesto tu la reimpostazione,"
+                        + " ignora questa email: la tua password attuale resta valida.\n\n"
+                        + "Questa e' un'email automatica: non rispondere a questo indirizzo.";
+
+        send(toEmail, "Reimposta la password di GameHub", text);
+
+        log.info("Email di reset password inviata a {}", toEmail);
+    }
+
+    private void send(String toEmail, String subject, String text) {
         Map<String, Object> body =
                 Map.of(
                         "sender",
@@ -67,7 +93,7 @@ public class EmailService implements IEmailService {
                         "to",
                         List.of(Map.of("email", toEmail)),
                         "subject",
-                        "Conferma il tuo account GameHub",
+                        subject,
                         "textContent",
                         text);
 
@@ -79,7 +105,5 @@ public class EmailService implements IEmailService {
                 .body(body)
                 .retrieve()
                 .toBodilessEntity();
-
-        log.info("Email di conferma inviata a {}", toEmail);
     }
 }
