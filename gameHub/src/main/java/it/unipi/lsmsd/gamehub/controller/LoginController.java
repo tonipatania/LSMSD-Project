@@ -1,8 +1,12 @@
 package it.unipi.lsmsd.gamehub.controller;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import it.unipi.lsmsd.gamehub.DTO.LoginDTO;
 import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
+import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.security.LoginRateLimiter;
+import it.unipi.lsmsd.gamehub.security.TokenBlacklistService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
@@ -24,6 +28,10 @@ public class LoginController {
     @Autowired private IUserNeo4jService userNeo4jService;
 
     @Autowired private LoginRateLimiter loginRateLimiter;
+
+    @Autowired private JwtService jwtService;
+
+    @Autowired private TokenBlacklistService tokenBlacklistService;
 
     /*Postman parameters
     {
@@ -115,6 +123,27 @@ public class LoginController {
         loginService.removeUser(responseEntity.getBody());
         return new ResponseEntity<>(
                 "Registrazione non riuscita, riprova piu tardi", HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    // Non serve elencarlo tra i permitAll in SecurityConfig: richiede gia' un Authorization
+    // Bearer valido come ogni altro endpoint non elencato li'. Si legge l'header direttamente
+    // invece di passare dal SecurityContext perche' serve il jti/scadenza grezzi del token, che
+    // JwtAuthenticationFilter non propaga nell'Authentication (solo username e ruolo).
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            try {
+                Claims claims = jwtService.parseToken(header.substring(7));
+                long remainingMs = claims.getExpiration().getTime() - System.currentTimeMillis();
+                tokenBlacklistService.revoke(claims.getId(), remainingMs);
+                log.info("Logout effettuato per l'utente {}", claims.getSubject());
+            } catch (JwtException e) {
+                // token gia' scaduto o manomesso: niente da revocare
+                log.debug("Logout con token non valido: {}", e.getMessage());
+            }
+        }
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/confirm-email")
