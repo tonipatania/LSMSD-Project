@@ -20,6 +20,13 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
+      # setup-java's `cache: maven` only covers ~/.m2/repository: without this the wrapper
+      # re-downloads the Maven distribution from Central on every job, and a transient failure
+      # there (404/5xx) fails the build before any project code runs.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/wrapper
+          key: maven-wrapper-${{ hashFiles('gameHub/.mvn/wrapper/maven-wrapper.properties') }}
       - run: ./mvnw -B spotless:check checkstyle:check
 
   unit-tests:
@@ -41,6 +48,13 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
+      # setup-java's `cache: maven` only covers ~/.m2/repository: without this the wrapper
+      # re-downloads the Maven distribution from Central on every job, and a transient failure
+      # there (404/5xx) fails the build before any project code runs.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/wrapper
+          key: maven-wrapper-${{ hashFiles('gameHub/.mvn/wrapper/maven-wrapper.properties') }}
       - run: ./mvnw -B test
 
   integration-e2e-tests:
@@ -62,6 +76,13 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: maven
+      # setup-java's `cache: maven` only covers ~/.m2/repository: without this the wrapper
+      # re-downloads the Maven distribution from Central on every job, and a transient failure
+      # there (404/5xx) fails the build before any project code runs.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/wrapper
+          key: maven-wrapper-${{ hashFiles('gameHub/.mvn/wrapper/maven-wrapper.properties') }}
       - run: ./mvnw -B verify
 
   docker-build:
