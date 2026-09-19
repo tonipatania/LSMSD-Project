@@ -16,6 +16,7 @@ import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.security.SecurityConfig;
+import it.unipi.lsmsd.gamehub.security.TokenBlacklistService;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
@@ -55,6 +56,9 @@ class UserControllerTest {
 
     // see LoginControllerTest for why this is required even with addFilters = false
     @MockBean private JwtService jwtService;
+
+    // JwtAuthenticationFilter (wired through SecurityConfig) also needs a TokenBlacklistService
+    @MockBean private TokenBlacklistService tokenBlacklistService;
 
     // With addFilters = false, JwtAuthenticationFilter never runs, so
     // SecurityMockMvcRequestPostProcessors.authentication() (which only bridges into

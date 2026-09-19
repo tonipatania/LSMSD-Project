@@ -13,6 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unipi.lsmsd.gamehub.DTO.LoginDTO;
 import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
 import it.unipi.lsmsd.gamehub.security.JwtService;
+import it.unipi.lsmsd.gamehub.security.LoginRateLimiter;
+import it.unipi.lsmsd.gamehub.security.TokenBlacklistService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
@@ -43,6 +45,12 @@ class LoginControllerTest {
     // JwtService bean, even though @AutoConfigureMockMvc(addFilters = false) means it never runs:
     // without this @MockBean, context startup fails with a NoSuchBeanDefinitionException.
     @MockBean private JwtService jwtService;
+
+    // JwtAuthenticationFilter (wired through SecurityConfig) also needs a TokenBlacklistService
+    @MockBean private TokenBlacklistService tokenBlacklistService;
+
+    // LoginController @Autowires the rate limiter directly
+    @MockBean private LoginRateLimiter loginRateLimiter;
 
     @Test
     void login_validCredentials_returnsOkWithAuthResponse() throws Exception {
