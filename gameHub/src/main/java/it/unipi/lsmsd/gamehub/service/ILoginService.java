@@ -19,4 +19,8 @@ public interface ILoginService {
     public void sendVerificationEmail(String userId);
 
     public ResponseEntity<String> confirmEmail(String token);
+
+    public void requestPasswordReset(String email);
+
+    public ResponseEntity<String> resetPassword(String token, String newPassword);
 }

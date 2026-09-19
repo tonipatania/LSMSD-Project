@@ -10,6 +10,10 @@ public interface LoginRepository extends MongoRepository<User, String> {
 
     User findByVerificationToken(String verificationToken);
 
+    User findByEmail(String email);
+
+    User findByPasswordResetTokenHash(String passwordResetTokenHash);
+
     User save(User user);
 
     boolean existsByUsername(String username);

@@ -2,8 +2,10 @@ package it.unipi.lsmsd.gamehub.controller;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
+import it.unipi.lsmsd.gamehub.DTO.ForgotPasswordDTO;
 import it.unipi.lsmsd.gamehub.DTO.LoginDTO;
 import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
+import it.unipi.lsmsd.gamehub.DTO.ResetPasswordDTO;
 import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.security.LoginRateLimiter;
 import it.unipi.lsmsd.gamehub.security.TokenBlacklistService;
@@ -149,6 +151,45 @@ public class LoginController {
     @GetMapping("/confirm-email")
     public ResponseEntity<String> confirmEmail(@RequestParam String token) {
         return loginService.confirmEmail(token);
+    }
+
+    // Risponde sempre 200 con lo stesso messaggio, che l'email corrisponda a un account o no
+    // (vedi LoginService.requestPasswordReset). Riusa LoginRateLimiter con chiave per solo IP
+    // (prefissata, per non collidere con quelle di /login): ogni richiesta conta, altrimenti un
+    // client potrebbe usare l'endpoint per inondare di email la casella di chiunque.
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(
+            @Valid @RequestBody ForgotPasswordDTO forgotPasswordDTO, HttpServletRequest request) {
+        String rateLimitKey = "forgot-password:" + clientIp(request);
+        if (loginRateLimiter.isBlocked(rateLimitKey)) {
+            long retryAfterSeconds = loginRateLimiter.remainingBlockSeconds(rateLimitKey);
+            log.warn(
+                    "Reset password rifiutato (rate limit attivo, riprova tra {}s)",
+                    retryAfterSeconds);
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", String.valueOf(retryAfterSeconds))
+                    .body("Troppe richieste, riprova tra qualche minuto");
+        }
+        loginRateLimiter.recordFailure(rateLimitKey);
+
+        loginService.requestPasswordReset(forgotPasswordDTO.getEmail());
+        return ResponseEntity.ok(
+                "Se l'email e' associata a un account, riceverai un link per reimpostare la"
+                        + " password");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(
+            @Valid @RequestBody ResetPasswordDTO resetPasswordDTO) {
+        ResponseEntity<String> response =
+                loginService.resetPassword(
+                        resetPasswordDTO.getToken(), resetPasswordDTO.getNewPassword());
+        if (response.getStatusCode() == HttpStatus.OK) {
+            log.info("Password reimpostata tramite link di reset");
+        } else {
+            log.warn("Reimpostazione password rifiutata: {}", response.getStatusCode());
+        }
+        return response;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
