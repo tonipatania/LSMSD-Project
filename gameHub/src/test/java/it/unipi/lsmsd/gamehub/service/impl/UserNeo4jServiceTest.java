@@ -26,6 +26,7 @@ import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
+import it.unipi.lsmsd.gamehub.service.INotificationService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -55,6 +56,7 @@ class UserNeo4jServiceTest {
     @Mock private Executor suggestionsExecutor;
     @Mock private IGameService gameService;
     @Mock private IActivityService activityService;
+    @Mock private INotificationService notificationService;
 
     @InjectMocks private UserNeo4jService userNeo4jService;
 
@@ -645,6 +647,7 @@ class UserNeo4jServiceTest {
         userNeo4jService.followUser("Lunark", "Kaistlin");
 
         verify(activityService).recordFollow("Lunark", "Kaistlin");
+        verify(notificationService).notifyFollow("Lunark", "Kaistlin");
     }
 
     @Test
@@ -656,6 +659,7 @@ class UserNeo4jServiceTest {
         assertThat(userNeo4jService.followUser("Lunark", "Kaistlin")).isTrue();
 
         verify(activityService, never()).recordFollow(anyString(), anyString());
+        verify(notificationService, never()).notifyFollow(anyString(), anyString());
     }
 
     @Test
@@ -666,6 +670,7 @@ class UserNeo4jServiceTest {
         userNeo4jService.unfollowUser("Lunark", "Kaistlin");
 
         verify(activityService).removeFollow("Lunark", "Kaistlin");
+        verify(notificationService).removeFollow("Lunark", "Kaistlin");
     }
 
     @Test
@@ -682,6 +687,8 @@ class UserNeo4jServiceTest {
         userNeo4jService.addLikeToReview("Lunark", "r1");
 
         verify(activityService).recordLikeReview("Lunark", "BARRIER X", "r1");
+        // l'autore (Kaistlin) viene avvisato del like
+        verify(notificationService).notifyLike("Lunark", review);
     }
 
     @Test
@@ -698,6 +705,7 @@ class UserNeo4jServiceTest {
         verify(userNeo4jRepository, never()).addLikeToReview(anyString(), anyString());
         verify(reviewRepository, never()).save(any(Review.class));
         verify(activityService, never()).recordLikeReview(anyString(), anyString(), anyString());
+        verify(notificationService, never()).notifyLike(anyString(), any(Review.class));
     }
 
     @Test
@@ -708,6 +716,7 @@ class UserNeo4jServiceTest {
         userNeo4jService.addLikeToReview("Lunark", "r1");
 
         verify(activityService, never()).recordLikeReview(anyString(), anyString(), anyString());
+        verify(notificationService, never()).notifyLike(anyString(), any(Review.class));
     }
 
     @Test
@@ -718,6 +727,7 @@ class UserNeo4jServiceTest {
         userNeo4jService.removeLikeFromReview("Lunark", "r1");
 
         verify(activityService).removeLikeReview("Lunark", "r1");
+        verify(notificationService).removeLike("Lunark", "r1");
     }
 
     @Test
@@ -727,6 +737,7 @@ class UserNeo4jServiceTest {
         userNeo4jService.removeLikeFromReview("Lunark", "r1");
 
         verify(activityService, never()).removeLikeReview(anyString(), anyString());
+        verify(notificationService, never()).removeLike(anyString(), anyString());
     }
 
     // --- getUser / updateUser -------------------------------------------------------------------

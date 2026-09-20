@@ -5,6 +5,7 @@ import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.ReviewReply;
 import it.unipi.lsmsd.gamehub.repository.ReviewReplyRepository;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
+import it.unipi.lsmsd.gamehub.service.INotificationService;
 import it.unipi.lsmsd.gamehub.service.IReviewReplyService;
 import java.time.Instant;
 import java.util.Collections;
@@ -34,6 +35,7 @@ public class ReviewReplyService implements IReviewReplyService {
     @Autowired private ReviewReplyRepository replyRepository;
     @Autowired private ReviewRepository reviewRepository;
     @Autowired private MongoTemplate mongoTemplate;
+    @Autowired private INotificationService notificationService;
 
     @Override
     public ResponseEntity<Object> createReply(String username, ReplyRequestDTO request) {
@@ -67,6 +69,8 @@ public class ReviewReplyService implements IReviewReplyService {
                     replyRepository.save(
                             new ReviewReply(
                                     null, request.getReviewId(), username, comment, Instant.now()));
+            // l'autore della recensione viene avvisato (best effort: non fa fallire la risposta)
+            notificationService.notifyReply(username, review.get(), saved);
             return new ResponseEntity<>(saved, HttpStatus.CREATED);
         } catch (Exception e) {
             log.error("Errore in createReply", e);
@@ -124,6 +128,7 @@ public class ReviewReplyService implements IReviewReplyService {
                         "only the author can delete a reply", HttpStatus.FORBIDDEN);
             }
             replyRepository.deleteById(replyId);
+            notificationService.removeReply(replyId);
             return new ResponseEntity<>("reply deleted", HttpStatus.OK);
         } catch (Exception e) {
             log.error("Errore in deleteReply", e);

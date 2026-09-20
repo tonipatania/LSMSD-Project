@@ -28,6 +28,7 @@ import it.unipi.lsmsd.gamehub.service.IReviewService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -115,6 +116,24 @@ class ReviewControllerTest {
 
     private ReviewDTO reviewDto() {
         return new ReviewDTO(null, "BARRIER X", 8, "Amazing", "Kaistlin");
+    }
+
+    @Test
+    void getReview_existingId_returnsTheReview() throws Exception {
+        when(review2Service.getReview("r1")).thenReturn(Optional.of(review("r1", "BARRIER X")));
+
+        mockMvc.perform(get("/review/r1").with(asUser("Lunark")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("r1"))
+                .andExpect(jsonPath("$.title").value("BARRIER X"));
+    }
+
+    @Test
+    void getReview_unknownId_returnsNotFound() throws Exception {
+        when(review2Service.getReview("nope")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/review/nope").with(asUser("Lunark")))
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -9,6 +9,7 @@ import it.unipi.lsmsd.gamehub.model.*;
 import it.unipi.lsmsd.gamehub.repository.*;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
+import it.unipi.lsmsd.gamehub.service.INotificationService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -73,6 +74,7 @@ public class UserNeo4jService implements IUserNeo4jService {
 
     @Autowired private IGameService gameService;
     @Autowired private IActivityService activityService;
+    @Autowired private INotificationService notificationService;
 
     @Override
     public void SyncUser() {
@@ -501,6 +503,7 @@ public class UserNeo4jService implements IUserNeo4jService {
                     reviewRepository.save(review);
 
                     activityService.recordLikeReview(username, review.getTitle(), id);
+                    notificationService.notifyLike(username, review);
 
                     // check if in the embedded review list of the game the likeCount of this review
                     // is greater of the likeCount of the embedded review with minor likeCount, if
@@ -590,6 +593,7 @@ public class UserNeo4jService implements IUserNeo4jService {
 
             // il like c'era davvero, quindi si decrementa anche su mongoDB e sparisce dal feed
             activityService.removeLikeReview(username, id);
+            notificationService.removeLike(username, id);
             Optional<Review> optionalReview = reviewRepository.findById(id);
             if (optionalReview.isEmpty()) {
                 return false;
@@ -657,6 +661,7 @@ public class UserNeo4jService implements IUserNeo4jService {
                 if (!Boolean.TRUE.equals(alreadyFollowing)
                         && !followerUsername.equals(followedUsername)) {
                     activityService.recordFollow(followerUsername, followedUsername);
+                    notificationService.notifyFollow(followerUsername, followedUsername);
                 }
                 return true;
             }
@@ -676,6 +681,7 @@ public class UserNeo4jService implements IUserNeo4jService {
                 if (userNeo4j.getUsername().equals(followedUsername)) {
                     userNeo4jRepository.unfollowUser(followerUsername, followedUsername);
                     activityService.removeFollow(followerUsername, followedUsername);
+                    notificationService.removeFollow(followerUsername, followedUsername);
                     return true;
                 }
             }

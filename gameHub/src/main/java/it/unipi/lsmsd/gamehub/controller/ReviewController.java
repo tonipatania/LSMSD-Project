@@ -87,6 +87,16 @@ public class ReviewController {
         return replyService.createReply(username, request);
     }
 
+    // una singola recensione: la pagina del gioco ne mostra solo le piu' votate, quindi chi arriva
+    // da una notifica potrebbe puntare a una che non e' tra quelle caricate
+    @GetMapping("/{id}")
+    public ResponseEntity<Review> getReview(@PathVariable String id) {
+        return review2Service
+                .getReview(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/replies")
     public ResponseEntity<List<ReviewReply>> getReplies(@RequestParam String reviewId) {
         return ResponseEntity.ok(replyService.getReplies(reviewId));
