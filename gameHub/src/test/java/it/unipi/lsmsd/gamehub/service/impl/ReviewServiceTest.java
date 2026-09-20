@@ -14,6 +14,7 @@ import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.User;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
 import it.unipi.lsmsd.gamehub.repository.LoginRepository;
+import it.unipi.lsmsd.gamehub.repository.ReviewReplyRepository;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import java.util.Collections;
@@ -34,6 +35,7 @@ class ReviewServiceTest {
     @Mock private GameRepository gameRepository;
     @Mock private LoginRepository loginRepository;
     @Mock private IGameService gameService;
+    @Mock private ReviewReplyRepository replyRepository;
 
     @InjectMocks private ReviewService reviewService;
 
@@ -107,6 +109,8 @@ class ReviewServiceTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(reviewRepository).deleteById("r1");
+        // le risposte spariscono insieme alla recensione a cui rispondono
+        verify(replyRepository).deleteByReviewId("r1");
         verify(gameService).updateGameReviewFromScratch(any(Game.class), eq(20));
     }
 

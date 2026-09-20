@@ -425,10 +425,16 @@ public class UserNeo4jService implements IUserNeo4jService {
     @Override
     public Boolean addLikeToReview(String username, String id) {
         try {
+            Optional<Review> optionalReview = reviewRepository.findById(id);
+            // non si mette like ai propri contenuti: va controllato prima di creare la relazione
+            // LIKE, cosi non c'e' nulla da annullare e likeCount non si muove
+            if (optionalReview.isPresent() && username.equals(optionalReview.get().getUsername())) {
+                return false;
+            }
+
             Boolean likePresent = userNeo4jRepository.addLikeToReview(username, id);
             if (likePresent != null && !likePresent.booleanValue()) {
                 // se il like non è presente si aggiunge anche su mongoDB
-                Optional<Review> optionalReview = reviewRepository.findById(id);
                 if (optionalReview.isPresent()) {
                     Review review = optionalReview.get();
                     int modifiedLikeCount = review.getLikeCount();
@@ -436,10 +442,7 @@ public class UserNeo4jService implements IUserNeo4jService {
                     review.setLikeCount(modifiedLikeCount);
                     reviewRepository.save(review);
 
-                    // il like a una propria recensione non e' una notizia per gli amici
-                    if (!username.equals(review.getUsername())) {
-                        activityService.recordLikeReview(username, review.getTitle(), id);
-                    }
+                    activityService.recordLikeReview(username, review.getTitle(), id);
 
                     // check if in the embedded review list of the game the likeCount of this review
                     // is greater of the likeCount of the embedded review with minor likeCount, if
