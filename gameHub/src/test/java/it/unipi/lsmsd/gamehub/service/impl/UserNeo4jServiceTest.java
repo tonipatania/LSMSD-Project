@@ -600,6 +600,100 @@ class UserNeo4jServiceTest {
         assertThat(userNeo4jService.unfollowUser("Lunark", "Kaistlin")).isNull();
     }
 
+    // --- feed activity recording (like / follow) ----------------------------------------------
+
+    @Test
+    void followUser_firstTime_recordsFollowActivity() {
+        when(userNeo4jRepository.getUser("Lunark")).thenReturn(new UserNeo4j("u1", "Lunark"));
+        when(userNeo4jRepository.getUser("Kaistlin")).thenReturn(new UserNeo4j("u2", "Kaistlin"));
+        when(userNeo4jRepository.followUser("Lunark", "Kaistlin")).thenReturn(false);
+
+        userNeo4jService.followUser("Lunark", "Kaistlin");
+
+        verify(activityService).recordFollow("Lunark", "Kaistlin");
+    }
+
+    @Test
+    void followUser_alreadyFollowing_doesNotRecordADuplicateActivity() {
+        when(userNeo4jRepository.getUser("Lunark")).thenReturn(new UserNeo4j("u1", "Lunark"));
+        when(userNeo4jRepository.getUser("Kaistlin")).thenReturn(new UserNeo4j("u2", "Kaistlin"));
+        when(userNeo4jRepository.followUser("Lunark", "Kaistlin")).thenReturn(true);
+
+        assertThat(userNeo4jService.followUser("Lunark", "Kaistlin")).isTrue();
+
+        verify(activityService, never()).recordFollow(anyString(), anyString());
+    }
+
+    @Test
+    void unfollowUser_currentlyFollowed_removesTheFollowActivity() {
+        when(userNeo4jRepository.findFollowedUsers("Lunark"))
+                .thenReturn(List.of(new UserNeo4j("u2", "Kaistlin")));
+
+        userNeo4jService.unfollowUser("Lunark", "Kaistlin");
+
+        verify(activityService).removeFollow("Lunark", "Kaistlin");
+    }
+
+    @Test
+    void addLikeToReview_newLike_recordsLikeActivityOnTheReviewsGame() {
+        when(userNeo4jRepository.addLikeToReview("Lunark", "r1")).thenReturn(false);
+        Review review = reviewWithLikes("r1", 1);
+        review.setTitle("BARRIER X");
+        review.setUsername("Kaistlin");
+        when(reviewRepository.findById("r1")).thenReturn(Optional.of(review));
+        Game game = mongoGame("g1", "BARRIER X");
+        game.setReviews(List.of(reviewWithLikes("embedded", 50)));
+        when(gameRepository.findByName("BARRIER X")).thenReturn(List.of(game));
+
+        userNeo4jService.addLikeToReview("Lunark", "r1");
+
+        verify(activityService).recordLikeReview("Lunark", "BARRIER X", "r1");
+    }
+
+    @Test
+    void addLikeToReview_likeOnOwnReview_recordsNoActivity() {
+        when(userNeo4jRepository.addLikeToReview("Lunark", "r1")).thenReturn(false);
+        Review review = reviewWithLikes("r1", 1);
+        review.setTitle("BARRIER X");
+        review.setUsername("Lunark");
+        when(reviewRepository.findById("r1")).thenReturn(Optional.of(review));
+        Game game = mongoGame("g1", "BARRIER X");
+        game.setReviews(List.of(reviewWithLikes("embedded", 50)));
+        when(gameRepository.findByName("BARRIER X")).thenReturn(List.of(game));
+
+        userNeo4jService.addLikeToReview("Lunark", "r1");
+
+        verify(activityService, never()).recordLikeReview(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void addLikeToReview_likeAlreadyPresent_recordsNoActivity() {
+        when(userNeo4jRepository.addLikeToReview("Lunark", "r1")).thenReturn(true);
+
+        userNeo4jService.addLikeToReview("Lunark", "r1");
+
+        verify(activityService, never()).recordLikeReview(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void removeLikeFromReview_likeExisted_removesTheLikeActivity() {
+        when(userNeo4jRepository.removeLikeFromReview("Lunark", "r1")).thenReturn(1L);
+        when(reviewRepository.findById("r1")).thenReturn(Optional.empty());
+
+        userNeo4jService.removeLikeFromReview("Lunark", "r1");
+
+        verify(activityService).removeLikeReview("Lunark", "r1");
+    }
+
+    @Test
+    void removeLikeFromReview_noLikeToRemove_leavesTheFeedUntouched() {
+        when(userNeo4jRepository.removeLikeFromReview("Lunark", "r1")).thenReturn(0L);
+
+        userNeo4jService.removeLikeFromReview("Lunark", "r1");
+
+        verify(activityService, never()).removeLikeReview(anyString(), anyString());
+    }
+
     // --- getUser / updateUser -------------------------------------------------------------------
 
     @Test

@@ -1,7 +1,9 @@
 package it.unipi.lsmsd.gamehub.controller;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -12,6 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import it.unipi.lsmsd.gamehub.DTO.CommunityHighlightsDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.security.JwtService;
@@ -20,6 +23,7 @@ import it.unipi.lsmsd.gamehub.security.TokenBlacklistService;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +33,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -374,5 +380,66 @@ class UserControllerTest {
         mockMvc.perform(get("/user/getUser").param("username", "Ghost"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(""));
+    }
+
+    // --- feed della Home ----------------------------------------------------------------------
+
+    @Test
+    void getFriendsActivity_usesTheAuthenticatedUserNotAParameter() throws Exception {
+        when(activityService.getFriendsActivity(eq("Lunark"), any()))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 15), 0));
+
+        mockMvc.perform(
+                        get("/user/activity/friends")
+                                .param("username", "someoneElse")
+                                .with(asUser("Lunark")))
+                .andExpect(status().isOk());
+
+        verify(activityService).getFriendsActivity(eq("Lunark"), any());
+    }
+
+    @Test
+    void markFriendsActivitySeen_validInstant_returnsNoContent() throws Exception {
+        when(activityService.markFeedSeen(eq("Lunark"), any())).thenReturn(true);
+
+        mockMvc.perform(
+                        post("/user/activity/friends/seen")
+                                .param("upTo", "2026-09-20T10:15:30.123Z")
+                                .with(asUser("Lunark")))
+                .andExpect(status().isNoContent());
+
+        verify(activityService).markFeedSeen("Lunark", Instant.parse("2026-09-20T10:15:30.123Z"));
+    }
+
+    @Test
+    void markFriendsActivitySeen_writeFails_returnsInternalServerError() throws Exception {
+        when(activityService.markFeedSeen(eq("Lunark"), any())).thenReturn(false);
+
+        mockMvc.perform(
+                        post("/user/activity/friends/seen")
+                                .param("upTo", "2026-09-20T10:15:30Z")
+                                .with(asUser("Lunark")))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void markFriendsActivitySeen_malformedInstant_returnsBadRequest() throws Exception {
+        mockMvc.perform(
+                        post("/user/activity/friends/seen")
+                                .param("upTo", "not-a-date")
+                                .with(asUser("Lunark")))
+                .andExpect(status().isBadRequest());
+
+        verify(activityService, never()).markFeedSeen(anyString(), any());
+    }
+
+    @Test
+    void getCommunityHighlights_returnsServiceResult() throws Exception {
+        when(activityService.getCommunityHighlights())
+                .thenReturn(new CommunityHighlightsDTO(List.of(), List.of()));
+
+        mockMvc.perform(get("/user/community/highlights").with(asUser("Lunark")))
+                .andExpect(status().isOk())
+                .andExpect(content().json("{\"trendingReviews\":[],\"hotGames\":[]}"));
     }
 }

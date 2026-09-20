@@ -1,6 +1,7 @@
 package it.unipi.lsmsd.gamehub.controller;
 
 import it.unipi.lsmsd.gamehub.DTO.ActivityDTO;
+import it.unipi.lsmsd.gamehub.DTO.CommunityHighlightsDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
@@ -8,12 +9,14 @@ import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
+import java.time.Instant;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -120,12 +123,32 @@ public class UserController {
         return ResponseEntity.ok(userNeo4jService.getFollowedUserPage(username, pageable));
     }
 
-    // feed "attivita' amici" della Home: cosa hanno fatto di recente le persone seguite
-    // (aggiunte alla wishlist, nuove review), piu' recenti prima
+    // feed della Home: cosa hanno fatto di recente le persone seguite (wishlist, recensioni, like,
+    // nuovi follow), piu' recenti prima. Ogni voce dice se e' nuova rispetto all'ultima volta che
+    // l'utente ha visto il feed, quindi l'utente e' sempre quello autenticato, mai un parametro.
     @GetMapping("/activity/friends")
     public ResponseEntity<Page<ActivityDTO>> getFriendsActivity(
-            @RequestParam String username, @PageableDefault(size = 15) Pageable pageable) {
+            @AuthenticationPrincipal String username,
+            @PageableDefault(size = 15) Pageable pageable) {
         return ResponseEntity.ok(activityService.getFriendsActivity(username, pageable));
+    }
+
+    // il client lo chiama quando l'utente ha davvero guardato le novita' (vedi HomeComponent):
+    // upTo e' l'istante dell'attivita' piu' recente vista
+    @PostMapping("/activity/friends/seen")
+    public ResponseEntity<Void> markFriendsActivitySeen(
+            @AuthenticationPrincipal String username,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant upTo) {
+        if (activityService.markFeedSeen(username, upTo)) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
+    // recensioni in tendenza e giochi piu' desiderati, uguali per tutti gli utenti
+    @GetMapping("/community/highlights")
+    public ResponseEntity<CommunityHighlightsDTO> getCommunityHighlights() {
+        return ResponseEntity.ok(activityService.getCommunityHighlights());
     }
 
     @GetMapping("/search")

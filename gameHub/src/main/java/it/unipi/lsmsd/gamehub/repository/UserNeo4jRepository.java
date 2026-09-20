@@ -1,6 +1,7 @@
 package it.unipi.lsmsd.gamehub.repository;
 
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
+import it.unipi.lsmsd.gamehub.DTO.UserStatsDTO;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import java.util.List;
@@ -136,9 +137,13 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
             "MATCH (user:UserNeo4j{username:$username})-[:LIKE]->(review:ReviewNeo4j) RETURN review.id LIMIT 5000")
     List<String> findLikedReviewIds(@Param("username") String username);
 
+    // true se l'utente seguiva gia': serve a registrare l'attivita' "ha iniziato a seguire" solo
+    // alla prima volta, come per addLikeToReview
     @Query(
-            "MATCH (a:UserNeo4j {username: $followerUsername}), (b:UserNeo4j {username: $followedUsername}) MERGE (a)-[:FOLLOW]->(b)")
-    void followUser(String followerUsername, String followedUsername);
+            "MATCH (a:UserNeo4j {username: $followerUsername}), (b:UserNeo4j {username: $followedUsername}) "
+                    + "OPTIONAL MATCH (a)-[r:FOLLOW]->(b) WITH a, b, r MERGE (a)-[:FOLLOW]->(b) "
+                    + "RETURN r IS NOT NULL AS relationshipExists")
+    Boolean followUser(String followerUsername, String followedUsername);
 
     @Query(
             "MATCH (a:UserNeo4j {username: $followerUsername})-[r:FOLLOW]->(b:UserNeo4j {username: $followedUsername}) DELETE r")
@@ -154,6 +159,17 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
 
     @Query("MATCH (a:UserNeo4j {username: $username}) RETURN a")
     UserNeo4j getUser(String username);
+
+    // numeri di piu' utenti in una sola query (la card "ha iniziato a seguire" nel feed ne mostra
+    // fino a una pagina intera). OPTIONAL MATCH + count invece di size(pattern), che Neo4j 5 non
+    // accetta piu'.
+    @Query(
+            "MATCH (u:UserNeo4j) WHERE u.username IN $usernames "
+                    + "OPTIONAL MATCH (u)-[a:ADD]->() WITH u, count(a) AS wishlistCount "
+                    + "OPTIONAL MATCH (u)<-[f:FOLLOW]-() "
+                    + "RETURN u.username AS username, wishlistCount AS wishlistCount, "
+                    + "count(f) AS followers")
+    List<UserStatsDTO> findUserStats(@Param("usernames") List<String> usernames);
 
     @Query("MATCH (a:UserNeo4j {username: $username}) SET a.username = $newUsername")
     void updateUser(String username, String newUsername);
