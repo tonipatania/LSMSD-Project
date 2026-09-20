@@ -1,5 +1,7 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
+import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
+import it.unipi.lsmsd.gamehub.DTO.ConnectionStatsDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.*;
 import it.unipi.lsmsd.gamehub.repository.*;
@@ -300,6 +302,48 @@ public class UserNeo4jService implements IUserNeo4jService {
         } catch (Exception e) {
             log.error("Errore in getFollowedUserPage", e);
             return Page.empty(pageable);
+        }
+    }
+
+    @Override
+    public Page<ConnectionDTO> getConnectionsPage(
+            String username, ConnectionType type, Pageable pageable) {
+        try {
+            long skip = pageable.getOffset();
+            int limit = pageable.getPageSize();
+            List<ConnectionDTO> content;
+            long total;
+            switch (type) {
+                case FOLLOWERS -> {
+                    content = userNeo4jRepository.findFollowerConnections(username, skip, limit);
+                    total = userNeo4jRepository.countFollowers(username);
+                }
+                case MUTUAL -> {
+                    content = userNeo4jRepository.findMutualConnections(username, skip, limit);
+                    total = userNeo4jRepository.countMutualFollows(username);
+                }
+                default -> {
+                    content = userNeo4jRepository.findFollowingConnections(username, skip, limit);
+                    total = userNeo4jRepository.countFollowedUsers(username);
+                }
+            }
+            return new PageImpl<>(content, pageable, total);
+        } catch (Exception e) {
+            log.error("Errore in getConnectionsPage", e);
+            return Page.empty(pageable);
+        }
+    }
+
+    @Override
+    public ConnectionStatsDTO getConnectionStats(String username) {
+        try {
+            return new ConnectionStatsDTO(
+                    userNeo4jRepository.countFollowedUsers(username),
+                    userNeo4jRepository.countFollowers(username),
+                    userNeo4jRepository.countMutualFollows(username));
+        } catch (Exception e) {
+            log.error("Errore in getConnectionStats", e);
+            return null;
         }
     }
 

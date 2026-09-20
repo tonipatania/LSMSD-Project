@@ -12,9 +12,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import it.unipi.lsmsd.gamehub.DTO.CommunityHighlightsDTO;
+import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
+import it.unipi.lsmsd.gamehub.DTO.ConnectionStatsDTO;
+import it.unipi.lsmsd.gamehub.model.ConnectionType;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.security.JwtService;
@@ -441,5 +445,69 @@ class UserControllerTest {
         mockMvc.perform(get("/user/community/highlights").with(asUser("Lunark")))
                 .andExpect(status().isOk())
                 .andExpect(content().json("{\"trendingReviews\":[],\"hotGames\":[]}"));
+    }
+
+    // --- pagina Community: seguiti / follower / reciproci -----------------------------------
+
+    @Test
+    void getConnectionsPage_followers_usesTheTokenUsernameAndReturnsTheMutualFlag()
+            throws Exception {
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(userNeo4jService.getConnectionsPage(eq("Lunark"), eq(ConnectionType.FOLLOWERS), any()))
+                .thenReturn(
+                        new PageImpl<>(
+                                List.of(new ConnectionDTO("u2", "Kaistlin", true)), pageable, 1));
+
+        mockMvc.perform(
+                        get("/user/connections/page")
+                                .with(asUser("Lunark"))
+                                .param("type", "followers"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].username").value("Kaistlin"))
+                .andExpect(jsonPath("$.content[0].mutual").value(true))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void getConnectionsPage_noType_defaultsToFollowing() throws Exception {
+        when(userNeo4jService.getConnectionsPage(anyString(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        mockMvc.perform(get("/user/connections/page").with(asUser("Lunark")))
+                .andExpect(status().isOk());
+
+        verify(userNeo4jService)
+                .getConnectionsPage(eq("Lunark"), eq(ConnectionType.FOLLOWING), any());
+    }
+
+    @Test
+    void getConnectionsPage_unknownType_returnsBadRequest() throws Exception {
+        mockMvc.perform(
+                        get("/user/connections/page")
+                                .with(asUser("Lunark"))
+                                .param("type", "enemies"))
+                .andExpect(status().isBadRequest());
+
+        verify(userNeo4jService, never()).getConnectionsPage(anyString(), any(), any());
+    }
+
+    @Test
+    void getConnectionStats_returnsTheThreeCounts() throws Exception {
+        when(userNeo4jService.getConnectionStats("Lunark"))
+                .thenReturn(new ConnectionStatsDTO(10, 7, 4));
+
+        mockMvc.perform(get("/user/connections/stats").with(asUser("Lunark")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.following").value(10))
+                .andExpect(jsonPath("$.followers").value(7))
+                .andExpect(jsonPath("$.mutual").value(4));
+    }
+
+    @Test
+    void getConnectionStats_serviceReturnsNull_returnsInternalServerError() throws Exception {
+        when(userNeo4jService.getConnectionStats("Lunark")).thenReturn(null);
+
+        mockMvc.perform(get("/user/connections/stats").with(asUser("Lunark")))
+                .andExpect(status().isInternalServerError());
     }
 }

@@ -2,6 +2,7 @@ package it.unipi.lsmsd.gamehub.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -9,7 +10,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
+import it.unipi.lsmsd.gamehub.DTO.ConnectionStatsDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
+import it.unipi.lsmsd.gamehub.model.ConnectionType;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.Review;
@@ -774,5 +778,85 @@ class UserNeo4jServiceTest {
                 .thenThrow(new RuntimeException("boom"));
 
         assertThat(userNeo4jService.searchUsers("query", "Lunark")).isNull();
+    }
+
+    // --- getConnectionsPage / getConnectionStats ---------------------------------------------
+
+    @Test
+    void getConnectionsPage_followers_readsTheFollowerListAndCount() {
+        PageRequest pageable = PageRequest.of(1, 10);
+        List<ConnectionDTO> rows = List.of(new ConnectionDTO("u2", "Kaistlin", false));
+        when(userNeo4jRepository.findFollowerConnections("Lunark", 10L, 10L)).thenReturn(rows);
+        when(userNeo4jRepository.countFollowers("Lunark")).thenReturn(11L);
+
+        Page<ConnectionDTO> page =
+                userNeo4jService.getConnectionsPage("Lunark", ConnectionType.FOLLOWERS, pageable);
+
+        assertThat(page.getContent()).isEqualTo(rows);
+        assertThat(page.getTotalElements()).isEqualTo(11L);
+        verify(userNeo4jRepository, never())
+                .findFollowingConnections(anyString(), anyLong(), anyLong());
+    }
+
+    @Test
+    void getConnectionsPage_mutual_readsTheMutualListAndCount() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        List<ConnectionDTO> rows = List.of(new ConnectionDTO("u3", "Zelda", true));
+        when(userNeo4jRepository.findMutualConnections("Lunark", 0L, 20L)).thenReturn(rows);
+        when(userNeo4jRepository.countMutualFollows("Lunark")).thenReturn(1L);
+
+        Page<ConnectionDTO> page =
+                userNeo4jService.getConnectionsPage("Lunark", ConnectionType.MUTUAL, pageable);
+
+        assertThat(page.getContent())
+                .extracting(ConnectionDTO::getUsername)
+                .containsExactly("Zelda");
+        assertThat(page.getTotalElements()).isEqualTo(1L);
+    }
+
+    @Test
+    void getConnectionsPage_following_readsTheFollowedListAndCount() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        List<ConnectionDTO> rows = List.of(new ConnectionDTO("u4", "Link", false));
+        when(userNeo4jRepository.findFollowingConnections("Lunark", 0L, 20L)).thenReturn(rows);
+        when(userNeo4jRepository.countFollowedUsers("Lunark")).thenReturn(1L);
+
+        Page<ConnectionDTO> page =
+                userNeo4jService.getConnectionsPage("Lunark", ConnectionType.FOLLOWING, pageable);
+
+        assertThat(page.getContent()).isEqualTo(rows);
+    }
+
+    @Test
+    void getConnectionsPage_repositoryThrows_returnsEmptyPage() {
+        when(userNeo4jRepository.findFollowerConnections(anyString(), anyLong(), anyLong()))
+                .thenThrow(new RuntimeException("boom"));
+
+        Page<ConnectionDTO> page =
+                userNeo4jService.getConnectionsPage(
+                        "Lunark", ConnectionType.FOLLOWERS, PageRequest.of(0, 20));
+
+        assertThat(page.getContent()).isEmpty();
+    }
+
+    @Test
+    void getConnectionStats_combinesTheThreeCounts() {
+        when(userNeo4jRepository.countFollowedUsers("Lunark")).thenReturn(10L);
+        when(userNeo4jRepository.countFollowers("Lunark")).thenReturn(7L);
+        when(userNeo4jRepository.countMutualFollows("Lunark")).thenReturn(4L);
+
+        ConnectionStatsDTO stats = userNeo4jService.getConnectionStats("Lunark");
+
+        assertThat(stats.getFollowing()).isEqualTo(10L);
+        assertThat(stats.getFollowers()).isEqualTo(7L);
+        assertThat(stats.getMutual()).isEqualTo(4L);
+    }
+
+    @Test
+    void getConnectionStats_repositoryThrows_returnsNull() {
+        when(userNeo4jRepository.countFollowedUsers(anyString()))
+                .thenThrow(new RuntimeException("boom"));
+
+        assertThat(userNeo4jService.getConnectionStats("Lunark")).isNull();
     }
 }

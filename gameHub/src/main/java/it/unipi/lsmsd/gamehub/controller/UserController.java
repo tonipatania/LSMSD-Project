@@ -2,7 +2,10 @@ package it.unipi.lsmsd.gamehub.controller;
 
 import it.unipi.lsmsd.gamehub.DTO.ActivityDTO;
 import it.unipi.lsmsd.gamehub.DTO.CommunityHighlightsDTO;
+import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
+import it.unipi.lsmsd.gamehub.DTO.ConnectionStatsDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
+import it.unipi.lsmsd.gamehub.model.ConnectionType;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
@@ -121,6 +124,31 @@ public class UserController {
     public ResponseEntity<Page<UserNeo4j>> getFollowedUserPage(
             @RequestParam String username, @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(userNeo4jService.getFollowedUserPage(username, pageable));
+    }
+
+    // elenchi della pagina Community: chi seguo, chi mi segue, chi ci segue a vicenda. L'utente e'
+    // quello del token (sono i "miei" contatti), type = following | followers | mutual
+    @GetMapping("/connections/page")
+    public ResponseEntity<Page<ConnectionDTO>> getConnectionsPage(
+            @AuthenticationPrincipal String username,
+            @RequestParam(defaultValue = "following") String type,
+            @PageableDefault(size = 20) Pageable pageable) {
+        ConnectionType connectionType = ConnectionType.parse(type);
+        if (connectionType == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(
+                userNeo4jService.getConnectionsPage(username, connectionType, pageable));
+    }
+
+    @GetMapping("/connections/stats")
+    public ResponseEntity<ConnectionStatsDTO> getConnectionStats(
+            @AuthenticationPrincipal String username) {
+        ConnectionStatsDTO stats = userNeo4jService.getConnectionStats(username);
+        if (stats == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+        return ResponseEntity.ok(stats);
     }
 
     // feed della Home: cosa hanno fatto di recente le persone seguite (wishlist, recensioni, like,

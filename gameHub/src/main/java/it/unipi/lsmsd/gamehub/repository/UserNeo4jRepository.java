@@ -1,5 +1,6 @@
 package it.unipi.lsmsd.gamehub.repository;
 
+import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.DTO.UserStatsDTO;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
@@ -111,6 +112,46 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
     @Query(
             "MATCH (u:UserNeo4j)-[:FOLLOW]->(following:UserNeo4j) WHERE u.username = $username RETURN count(following)")
     long countFollowedUsers(@Param("username") String username);
+
+    // Elenchi della pagina Community. Ogni riga dice anche se la relazione e' reciproca
+    // (OPTIONAL MATCH sul verso opposto), cosi la card mostra "ti segue anche" senza una query per
+    // riga. Come per SuggestedUserDTO, ogni RETURN proietta tutte le proprieta' del DTO.
+    @Query(
+            "MATCH (u:UserNeo4j {username: $username})-[:FOLLOW]->(f:UserNeo4j) "
+                    + "OPTIONAL MATCH (f)-[m:FOLLOW]->(u) "
+                    + "RETURN f.id AS id, f.username AS username, m IS NOT NULL AS mutual "
+                    + "ORDER BY f.username SKIP $skip LIMIT $limit")
+    List<ConnectionDTO> findFollowingConnections(
+            @Param("username") String username,
+            @Param("skip") long skip,
+            @Param("limit") long limit);
+
+    @Query(
+            "MATCH (f:UserNeo4j)-[:FOLLOW]->(u:UserNeo4j {username: $username}) "
+                    + "OPTIONAL MATCH (u)-[m:FOLLOW]->(f) "
+                    + "RETURN f.id AS id, f.username AS username, m IS NOT NULL AS mutual "
+                    + "ORDER BY f.username SKIP $skip LIMIT $limit")
+    List<ConnectionDTO> findFollowerConnections(
+            @Param("username") String username,
+            @Param("skip") long skip,
+            @Param("limit") long limit);
+
+    @Query(
+            "MATCH (u:UserNeo4j {username: $username})-[:FOLLOW]->(f:UserNeo4j)-[:FOLLOW]->(u) "
+                    + "RETURN f.id AS id, f.username AS username, true AS mutual "
+                    + "ORDER BY f.username SKIP $skip LIMIT $limit")
+    List<ConnectionDTO> findMutualConnections(
+            @Param("username") String username,
+            @Param("skip") long skip,
+            @Param("limit") long limit);
+
+    @Query("MATCH (f:UserNeo4j)-[:FOLLOW]->(u:UserNeo4j {username: $username}) RETURN count(f)")
+    long countFollowers(@Param("username") String username);
+
+    @Query(
+            "MATCH (u:UserNeo4j {username: $username})-[:FOLLOW]->(f:UserNeo4j)-[:FOLLOW]->(u) "
+                    + "RETURN count(f)")
+    long countMutualFollows(@Param("username") String username);
 
     // DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW
     @Query(
