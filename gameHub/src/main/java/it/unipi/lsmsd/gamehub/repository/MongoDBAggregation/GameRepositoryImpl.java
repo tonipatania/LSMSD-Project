@@ -5,6 +5,7 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 import it.unipi.lsmsd.gamehub.model.Game;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.bson.Document;
@@ -119,5 +120,70 @@ public class GameRepositoryImpl implements GameRepositoryCustom {
             }
         }
         return genres;
+    }
+
+    @Override
+    public List<String> findLatestReleasedGameIds(int limit) {
+        // Pipeline grezza, come findDistinctGenres. Le date del dump sono "Oct 21, 2008", e una
+        // parte ha solo mese e anno ("May 2020"): si prova il primo formato, poi il secondo, e le
+        // date illeggibili restano null e vengono scartate.
+        AggregationOperation onlyWithCover =
+                context ->
+                        new Document(
+                                "$match",
+                                new Document(
+                                        "URL.Header image",
+                                        new Document("$exists", true)
+                                                .append("$nin", Arrays.asList(null, ""))));
+
+        Document monthYear =
+                new Document(
+                        "$dateFromString",
+                        new Document("dateString", "$releaseDate")
+                                .append("format", "%b %Y")
+                                .append("onError", null)
+                                .append("onNull", null));
+        Document dayMonthYear =
+                new Document(
+                        "$dateFromString",
+                        new Document("dateString", "$releaseDate")
+                                .append("format", "%b %d, %Y")
+                                .append("onError", monthYear)
+                                .append("onNull", null));
+        AggregationOperation parseDate =
+                context -> new Document("$addFields", new Document("parsedRelease", dayMonthYear));
+
+        AggregationOperation alreadyReleased =
+                context ->
+                        new Document(
+                                "$match",
+                                new Document(
+                                        "parsedRelease",
+                                        new Document("$ne", null).append("$lte", new Date())));
+
+        // a parita' di giorno (il dump ha centinaia di titoli con la stessa data) vince il voto
+        // piu'
+        // alto, poi il nome, cosi l'ordine e' stabile tra una chiamata e l'altra
+        AggregationOperation newestFirst =
+                context ->
+                        new Document(
+                                "$sort",
+                                new Document("parsedRelease", -1)
+                                        .append("avgScore", -1)
+                                        .append("name", 1));
+
+        AggregationOperation top = context -> new Document("$limit", limit);
+
+        Aggregation aggregation =
+                newAggregation(onlyWithCover, parseDate, alreadyReleased, newestFirst, top);
+        List<String> ids = new ArrayList<>();
+        for (Document doc :
+                mongoTemplate.aggregate(aggregation, "games", Document.class).getMappedResults()) {
+            Object id = doc.get("_id");
+            if (id != null) {
+                ids.add(id.toString());
+            }
+        }
+        return ids;
     }
 }

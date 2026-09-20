@@ -12,6 +12,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,6 +47,13 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
+                // Senza questa riga Spring Security registra il proprio LogoutFilter di default su
+                // POST /logout, PRIMA di JwtAuthenticationFilter nella catena: intercetta la
+                // richiesta prima che arrivi al @PostMapping("/logout") di LoginController e
+                // risponde con un redirect a /login?logout, senza mai revocare il token (vedi
+                // TokenBlacklistService). Qui il logout e' gestito interamente a mano via JWT
+                // stateless, quindi il meccanismo di default va disabilitato.
+                .logout(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -64,7 +72,12 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers(HttpMethod.OPTIONS, "/**")
                                         .permitAll()
-                                        .requestMatchers("/login", "/signup", "/confirm-email")
+                                        .requestMatchers(
+                                                "/login",
+                                                "/signup",
+                                                "/confirm-email",
+                                                "/forgot-password",
+                                                "/reset-password")
                                         .permitAll()
                                         .requestMatchers("/actuator/health")
                                         .permitAll()

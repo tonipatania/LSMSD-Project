@@ -2,6 +2,8 @@ package it.unipi.lsmsd.gamehub.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -9,7 +11,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
+import it.unipi.lsmsd.gamehub.DTO.ConnectionStatsDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
+import it.unipi.lsmsd.gamehub.model.ConnectionType;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.Review;
@@ -21,6 +26,7 @@ import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
+import it.unipi.lsmsd.gamehub.service.INotificationService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -50,6 +56,7 @@ class UserNeo4jServiceTest {
     @Mock private Executor suggestionsExecutor;
     @Mock private IGameService gameService;
     @Mock private IActivityService activityService;
+    @Mock private INotificationService notificationService;
 
     @InjectMocks private UserNeo4jService userNeo4jService;
 
@@ -374,6 +381,32 @@ class UserNeo4jServiceTest {
     }
 
     @Test
+    void getSuggestedFriends_popularPoolFromRedis_isReadBackAsDtosNotMaps() {
+        useDirectExecutor();
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        // il JSON in Redis non ha il tipo degli elementi: il serializer restituisce mappe
+        when(valueOperations.get("gamehub:suggestions:popular"))
+                .thenReturn(
+                        List.of(
+                                java.util.Map.of(
+                                        "id", "u5",
+                                        "username", "Popular",
+                                        "reason", "POPULAR",
+                                        "commonGames", 0,
+                                        "followers", 10)));
+        when(valueOperations.get("gamehub:suggestions:friends:Lunark")).thenReturn(null);
+        when(userNeo4jRepository.findSuggestedFriends(eq("Lunark"), eq(10))).thenReturn(List.of());
+        when(userNeo4jRepository.findUsersWithSimilarTastes(eq("Lunark"), eq(10)))
+                .thenReturn(List.of());
+        when(userNeo4jRepository.findFollowedUsers("Lunark")).thenReturn(List.of());
+
+        List<SuggestedUserDTO> result = userNeo4jService.getSuggestedFriends("Lunark");
+
+        assertThat(result).extracting(SuggestedUserDTO::getUsername).containsExactly("Popular");
+        verify(userNeo4jRepository, never()).findMostFollowedUsers(anyInt());
+    }
+
+    @Test
     void getSuggestedFriends_repositoryThrows_returnsNull() {
         useDirectExecutor();
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
@@ -397,11 +430,14 @@ class UserNeo4jServiceTest {
     }
 
     @Test
-    void addLikeToReview_likeAlreadyPresentInNeo4j_returnsFalseWithoutTouchingMongo() {
+    void addLikeToReview_likeAlreadyPresentInNeo4j_returnsFalseWithoutWritingToMongo() {
         when(userNeo4jRepository.addLikeToReview("Lunark", "r1")).thenReturn(true);
+        Review review = reviewWithLikes("r1", 1);
+        review.setUsername("Kaistlin");
+        when(reviewRepository.findById("r1")).thenReturn(Optional.of(review));
 
         assertThat(userNeo4jService.addLikeToReview("Lunark", "r1")).isFalse();
-        verify(reviewRepository, never()).findById(anyString());
+        verify(reviewRepository, never()).save(any(Review.class));
     }
 
     @Test
@@ -600,6 +636,110 @@ class UserNeo4jServiceTest {
         assertThat(userNeo4jService.unfollowUser("Lunark", "Kaistlin")).isNull();
     }
 
+    // --- feed activity recording (like / follow) ----------------------------------------------
+
+    @Test
+    void followUser_firstTime_recordsFollowActivity() {
+        when(userNeo4jRepository.getUser("Lunark")).thenReturn(new UserNeo4j("u1", "Lunark"));
+        when(userNeo4jRepository.getUser("Kaistlin")).thenReturn(new UserNeo4j("u2", "Kaistlin"));
+        when(userNeo4jRepository.followUser("Lunark", "Kaistlin")).thenReturn(false);
+
+        userNeo4jService.followUser("Lunark", "Kaistlin");
+
+        verify(activityService).recordFollow("Lunark", "Kaistlin");
+        verify(notificationService).notifyFollow("Lunark", "Kaistlin");
+    }
+
+    @Test
+    void followUser_alreadyFollowing_doesNotRecordADuplicateActivity() {
+        when(userNeo4jRepository.getUser("Lunark")).thenReturn(new UserNeo4j("u1", "Lunark"));
+        when(userNeo4jRepository.getUser("Kaistlin")).thenReturn(new UserNeo4j("u2", "Kaistlin"));
+        when(userNeo4jRepository.followUser("Lunark", "Kaistlin")).thenReturn(true);
+
+        assertThat(userNeo4jService.followUser("Lunark", "Kaistlin")).isTrue();
+
+        verify(activityService, never()).recordFollow(anyString(), anyString());
+        verify(notificationService, never()).notifyFollow(anyString(), anyString());
+    }
+
+    @Test
+    void unfollowUser_currentlyFollowed_removesTheFollowActivity() {
+        when(userNeo4jRepository.findFollowedUsers("Lunark"))
+                .thenReturn(List.of(new UserNeo4j("u2", "Kaistlin")));
+
+        userNeo4jService.unfollowUser("Lunark", "Kaistlin");
+
+        verify(activityService).removeFollow("Lunark", "Kaistlin");
+        verify(notificationService).removeFollow("Lunark", "Kaistlin");
+    }
+
+    @Test
+    void addLikeToReview_newLike_recordsLikeActivityOnTheReviewsGame() {
+        when(userNeo4jRepository.addLikeToReview("Lunark", "r1")).thenReturn(false);
+        Review review = reviewWithLikes("r1", 1);
+        review.setTitle("BARRIER X");
+        review.setUsername("Kaistlin");
+        when(reviewRepository.findById("r1")).thenReturn(Optional.of(review));
+        Game game = mongoGame("g1", "BARRIER X");
+        game.setReviews(List.of(reviewWithLikes("embedded", 50)));
+        when(gameRepository.findByName("BARRIER X")).thenReturn(List.of(game));
+
+        userNeo4jService.addLikeToReview("Lunark", "r1");
+
+        verify(activityService).recordLikeReview("Lunark", "BARRIER X", "r1");
+        // l'autore (Kaistlin) viene avvisato del like
+        verify(notificationService).notifyLike("Lunark", review);
+    }
+
+    @Test
+    void addLikeToReview_likeOnOwnReview_isRefusedWithoutTouchingNeo4jOrMongo() {
+        Review review = reviewWithLikes("r1", 1);
+        review.setTitle("BARRIER X");
+        review.setUsername("Lunark");
+        when(reviewRepository.findById("r1")).thenReturn(Optional.of(review));
+
+        Boolean result = userNeo4jService.addLikeToReview("Lunark", "r1");
+
+        assertThat(result).isFalse();
+        assertThat(review.getLikeCount()).isEqualTo(1);
+        verify(userNeo4jRepository, never()).addLikeToReview(anyString(), anyString());
+        verify(reviewRepository, never()).save(any(Review.class));
+        verify(activityService, never()).recordLikeReview(anyString(), anyString(), anyString());
+        verify(notificationService, never()).notifyLike(anyString(), any(Review.class));
+    }
+
+    @Test
+    void addLikeToReview_likeAlreadyPresent_recordsNoActivity() {
+        when(userNeo4jRepository.addLikeToReview("Lunark", "r1")).thenReturn(true);
+        when(reviewRepository.findById("r1")).thenReturn(Optional.of(reviewWithLikes("r1", 1)));
+
+        userNeo4jService.addLikeToReview("Lunark", "r1");
+
+        verify(activityService, never()).recordLikeReview(anyString(), anyString(), anyString());
+        verify(notificationService, never()).notifyLike(anyString(), any(Review.class));
+    }
+
+    @Test
+    void removeLikeFromReview_likeExisted_removesTheLikeActivity() {
+        when(userNeo4jRepository.removeLikeFromReview("Lunark", "r1")).thenReturn(1L);
+        when(reviewRepository.findById("r1")).thenReturn(Optional.empty());
+
+        userNeo4jService.removeLikeFromReview("Lunark", "r1");
+
+        verify(activityService).removeLikeReview("Lunark", "r1");
+        verify(notificationService).removeLike("Lunark", "r1");
+    }
+
+    @Test
+    void removeLikeFromReview_noLikeToRemove_leavesTheFeedUntouched() {
+        when(userNeo4jRepository.removeLikeFromReview("Lunark", "r1")).thenReturn(0L);
+
+        userNeo4jService.removeLikeFromReview("Lunark", "r1");
+
+        verify(activityService, never()).removeLikeReview(anyString(), anyString());
+        verify(notificationService, never()).removeLike(anyString(), anyString());
+    }
+
     // --- getUser / updateUser -------------------------------------------------------------------
 
     @Test
@@ -676,5 +816,85 @@ class UserNeo4jServiceTest {
                 .thenThrow(new RuntimeException("boom"));
 
         assertThat(userNeo4jService.searchUsers("query", "Lunark")).isNull();
+    }
+
+    // --- getConnectionsPage / getConnectionStats ---------------------------------------------
+
+    @Test
+    void getConnectionsPage_followers_readsTheFollowerListAndCount() {
+        PageRequest pageable = PageRequest.of(1, 10);
+        List<ConnectionDTO> rows = List.of(new ConnectionDTO("u2", "Kaistlin", false));
+        when(userNeo4jRepository.findFollowerConnections("Lunark", 10L, 10L)).thenReturn(rows);
+        when(userNeo4jRepository.countFollowers("Lunark")).thenReturn(11L);
+
+        Page<ConnectionDTO> page =
+                userNeo4jService.getConnectionsPage("Lunark", ConnectionType.FOLLOWERS, pageable);
+
+        assertThat(page.getContent()).isEqualTo(rows);
+        assertThat(page.getTotalElements()).isEqualTo(11L);
+        verify(userNeo4jRepository, never())
+                .findFollowingConnections(anyString(), anyLong(), anyLong());
+    }
+
+    @Test
+    void getConnectionsPage_mutual_readsTheMutualListAndCount() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        List<ConnectionDTO> rows = List.of(new ConnectionDTO("u3", "Zelda", true));
+        when(userNeo4jRepository.findMutualConnections("Lunark", 0L, 20L)).thenReturn(rows);
+        when(userNeo4jRepository.countMutualFollows("Lunark")).thenReturn(1L);
+
+        Page<ConnectionDTO> page =
+                userNeo4jService.getConnectionsPage("Lunark", ConnectionType.MUTUAL, pageable);
+
+        assertThat(page.getContent())
+                .extracting(ConnectionDTO::getUsername)
+                .containsExactly("Zelda");
+        assertThat(page.getTotalElements()).isEqualTo(1L);
+    }
+
+    @Test
+    void getConnectionsPage_following_readsTheFollowedListAndCount() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        List<ConnectionDTO> rows = List.of(new ConnectionDTO("u4", "Link", false));
+        when(userNeo4jRepository.findFollowingConnections("Lunark", 0L, 20L)).thenReturn(rows);
+        when(userNeo4jRepository.countFollowedUsers("Lunark")).thenReturn(1L);
+
+        Page<ConnectionDTO> page =
+                userNeo4jService.getConnectionsPage("Lunark", ConnectionType.FOLLOWING, pageable);
+
+        assertThat(page.getContent()).isEqualTo(rows);
+    }
+
+    @Test
+    void getConnectionsPage_repositoryThrows_returnsEmptyPage() {
+        when(userNeo4jRepository.findFollowerConnections(anyString(), anyLong(), anyLong()))
+                .thenThrow(new RuntimeException("boom"));
+
+        Page<ConnectionDTO> page =
+                userNeo4jService.getConnectionsPage(
+                        "Lunark", ConnectionType.FOLLOWERS, PageRequest.of(0, 20));
+
+        assertThat(page.getContent()).isEmpty();
+    }
+
+    @Test
+    void getConnectionStats_combinesTheThreeCounts() {
+        when(userNeo4jRepository.countFollowedUsers("Lunark")).thenReturn(10L);
+        when(userNeo4jRepository.countFollowers("Lunark")).thenReturn(7L);
+        when(userNeo4jRepository.countMutualFollows("Lunark")).thenReturn(4L);
+
+        ConnectionStatsDTO stats = userNeo4jService.getConnectionStats("Lunark");
+
+        assertThat(stats.getFollowing()).isEqualTo(10L);
+        assertThat(stats.getFollowers()).isEqualTo(7L);
+        assertThat(stats.getMutual()).isEqualTo(4L);
+    }
+
+    @Test
+    void getConnectionStats_repositoryThrows_returnsNull() {
+        when(userNeo4jRepository.countFollowedUsers(anyString()))
+                .thenThrow(new RuntimeException("boom"));
+
+        assertThat(userNeo4jService.getConnectionStats("Lunark")).isNull();
     }
 }

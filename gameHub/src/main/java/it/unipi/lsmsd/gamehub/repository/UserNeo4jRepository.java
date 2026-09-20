@@ -1,6 +1,8 @@
 package it.unipi.lsmsd.gamehub.repository;
 
+import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
+import it.unipi.lsmsd.gamehub.DTO.UserStatsDTO;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import java.util.List;
@@ -111,6 +113,54 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
             "MATCH (u:UserNeo4j)-[:FOLLOW]->(following:UserNeo4j) WHERE u.username = $username RETURN count(following)")
     long countFollowedUsers(@Param("username") String username);
 
+    // Elenchi della pagina Community. Ogni riga dice anche se la relazione e' reciproca
+    // (OPTIONAL MATCH sul verso opposto), cosi la card mostra "ti segue anche" senza una query per
+    // riga. Come per SuggestedUserDTO, ogni RETURN proietta tutte le proprieta' del DTO.
+    @Query(
+            "MATCH (u:UserNeo4j {username: $username})-[:FOLLOW]->(f:UserNeo4j) "
+                    + "OPTIONAL MATCH (f)-[m:FOLLOW]->(u) "
+                    + "RETURN f.id AS id, f.username AS username, m IS NOT NULL AS mutual "
+                    + "ORDER BY f.username SKIP $skip LIMIT $limit")
+    List<ConnectionDTO> findFollowingConnections(
+            @Param("username") String username,
+            @Param("skip") long skip,
+            @Param("limit") long limit);
+
+    @Query(
+            "MATCH (f:UserNeo4j)-[:FOLLOW]->(u:UserNeo4j {username: $username}) "
+                    + "OPTIONAL MATCH (u)-[m:FOLLOW]->(f) "
+                    + "RETURN f.id AS id, f.username AS username, m IS NOT NULL AS mutual "
+                    + "ORDER BY f.username SKIP $skip LIMIT $limit")
+    List<ConnectionDTO> findFollowerConnections(
+            @Param("username") String username,
+            @Param("skip") long skip,
+            @Param("limit") long limit);
+
+    @Query(
+            "MATCH (u:UserNeo4j {username: $username})-[:FOLLOW]->(f:UserNeo4j)-[:FOLLOW]->(u) "
+                    + "RETURN f.id AS id, f.username AS username, true AS mutual "
+                    + "ORDER BY f.username SKIP $skip LIMIT $limit")
+    List<ConnectionDTO> findMutualConnections(
+            @Param("username") String username,
+            @Param("skip") long skip,
+            @Param("limit") long limit);
+
+    @Query("MATCH (f:UserNeo4j)-[:FOLLOW]->(u:UserNeo4j {username: $username}) RETURN count(f)")
+    long countFollowers(@Param("username") String username);
+
+    @Query(
+            "MATCH (u:UserNeo4j {username: $username})-[:FOLLOW]->(f:UserNeo4j)-[:FOLLOW]->(u) "
+                    + "RETURN count(f)")
+    long countMutualFollows(@Param("username") String username);
+
+    // fra i candidati, quelli che l'utente segue gia': la lista notifiche la usa per non proporre
+    // "Segui anche tu" a chi e' gia' seguito, senza una query per notifica
+    @Query(
+            "MATCH (:UserNeo4j {username: $username})-[:FOLLOW]->(f:UserNeo4j) "
+                    + "WHERE f.username IN $candidates RETURN f.username")
+    List<String> findFollowedAmong(
+            @Param("username") String username, @Param("candidates") List<String> candidates);
+
     // DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW
     @Query(
             "MATCH (u:UserNeo4j {username:$username}), (g:ReviewNeo4j {id: $id}) "
@@ -136,9 +186,13 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
             "MATCH (user:UserNeo4j{username:$username})-[:LIKE]->(review:ReviewNeo4j) RETURN review.id LIMIT 5000")
     List<String> findLikedReviewIds(@Param("username") String username);
 
+    // true se l'utente seguiva gia': serve a registrare l'attivita' "ha iniziato a seguire" solo
+    // alla prima volta, come per addLikeToReview
     @Query(
-            "MATCH (a:UserNeo4j {username: $followerUsername}), (b:UserNeo4j {username: $followedUsername}) MERGE (a)-[:FOLLOW]->(b)")
-    void followUser(String followerUsername, String followedUsername);
+            "MATCH (a:UserNeo4j {username: $followerUsername}), (b:UserNeo4j {username: $followedUsername}) "
+                    + "OPTIONAL MATCH (a)-[r:FOLLOW]->(b) WITH a, b, r MERGE (a)-[:FOLLOW]->(b) "
+                    + "RETURN r IS NOT NULL AS relationshipExists")
+    Boolean followUser(String followerUsername, String followedUsername);
 
     @Query(
             "MATCH (a:UserNeo4j {username: $followerUsername})-[r:FOLLOW]->(b:UserNeo4j {username: $followedUsername}) DELETE r")
@@ -154,6 +208,17 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
 
     @Query("MATCH (a:UserNeo4j {username: $username}) RETURN a")
     UserNeo4j getUser(String username);
+
+    // numeri di piu' utenti in una sola query (la card "ha iniziato a seguire" nel feed ne mostra
+    // fino a una pagina intera). OPTIONAL MATCH + count invece di size(pattern), che Neo4j 5 non
+    // accetta piu'.
+    @Query(
+            "MATCH (u:UserNeo4j) WHERE u.username IN $usernames "
+                    + "OPTIONAL MATCH (u)-[a:ADD]->() WITH u, count(a) AS wishlistCount "
+                    + "OPTIONAL MATCH (u)<-[f:FOLLOW]-() "
+                    + "RETURN u.username AS username, wishlistCount AS wishlistCount, "
+                    + "count(f) AS followers")
+    List<UserStatsDTO> findUserStats(@Param("usernames") List<String> usernames);
 
     @Query("MATCH (a:UserNeo4j {username: $username}) SET a.username = $newUsername")
     void updateUser(String username, String newUsername);

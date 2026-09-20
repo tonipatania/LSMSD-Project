@@ -5,8 +5,10 @@ import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
 import it.unipi.lsmsd.gamehub.repository.LoginRepository;
+import it.unipi.lsmsd.gamehub.repository.ReviewReplyRepository;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.service.IGameService;
+import it.unipi.lsmsd.gamehub.service.INotificationService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
 import java.time.Instant;
 import java.util.List;
@@ -26,11 +28,15 @@ public class ReviewService implements IReviewService {
 
     @Autowired private ReviewRepository reviewRepository;
 
+    @Autowired private ReviewReplyRepository replyRepository;
+
     @Autowired private GameRepository gameRepository;
 
     @Autowired private LoginRepository loginRepository;
 
     @Autowired private IGameService gameService;
+
+    @Autowired private INotificationService notificationService;
 
     @Override
     public List<Review> retrieveByTitleOrderByLikeCountDesc(ReviewDTO reviewDTO, int limit) {
@@ -66,6 +72,11 @@ public class ReviewService implements IReviewService {
     }
 
     @Override
+    public Optional<Review> getReview(String id) {
+        return reviewRepository.findById(id);
+    }
+
+    @Override
     public ResponseEntity<String> deleteReview(String id) {
         try {
             Optional<Review> review = reviewRepository.findById(id);
@@ -74,6 +85,9 @@ public class ReviewService implements IReviewService {
             }
 
             reviewRepository.deleteById(id);
+            // le risposte non hanno senso senza la recensione a cui rispondono
+            replyRepository.deleteByReviewId(id);
+            notificationService.removeForReview(id);
 
             List<Game> game = gameRepository.findByName(review.get().getTitle());
             if (game != null && !game.isEmpty()) {

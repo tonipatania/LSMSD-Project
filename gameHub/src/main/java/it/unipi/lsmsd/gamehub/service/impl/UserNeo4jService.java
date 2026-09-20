@@ -1,10 +1,15 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
+import it.unipi.lsmsd.gamehub.DTO.ConnectionStatsDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.*;
 import it.unipi.lsmsd.gamehub.repository.*;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
+import it.unipi.lsmsd.gamehub.service.INotificationService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -54,6 +59,8 @@ public class UserNeo4jService implements IUserNeo4jService {
     private static final int WISHLIST_UNPAGINATED_CAP = 500;
     private static final int FOLLOWED_UNPAGINATED_CAP = 2000;
 
+    private static final ObjectMapper CACHE_MAPPER = new ObjectMapper();
+
     private static final String POPULAR_CACHE_KEY = "gamehub:suggestions:popular";
     private static final Duration POPULAR_CACHE_TTL = Duration.ofMinutes(10);
     private static final String FRIENDS_CACHE_KEY_PREFIX = "gamehub:suggestions:friends:";
@@ -67,6 +74,7 @@ public class UserNeo4jService implements IUserNeo4jService {
 
     @Autowired private IGameService gameService;
     @Autowired private IActivityService activityService;
+    @Autowired private INotificationService notificationService;
 
     @Override
     public void SyncUser() {
@@ -304,6 +312,48 @@ public class UserNeo4jService implements IUserNeo4jService {
     }
 
     @Override
+    public Page<ConnectionDTO> getConnectionsPage(
+            String username, ConnectionType type, Pageable pageable) {
+        try {
+            long skip = pageable.getOffset();
+            int limit = pageable.getPageSize();
+            List<ConnectionDTO> content;
+            long total;
+            switch (type) {
+                case FOLLOWERS -> {
+                    content = userNeo4jRepository.findFollowerConnections(username, skip, limit);
+                    total = userNeo4jRepository.countFollowers(username);
+                }
+                case MUTUAL -> {
+                    content = userNeo4jRepository.findMutualConnections(username, skip, limit);
+                    total = userNeo4jRepository.countMutualFollows(username);
+                }
+                default -> {
+                    content = userNeo4jRepository.findFollowingConnections(username, skip, limit);
+                    total = userNeo4jRepository.countFollowedUsers(username);
+                }
+            }
+            return new PageImpl<>(content, pageable, total);
+        } catch (Exception e) {
+            log.error("Errore in getConnectionsPage", e);
+            return Page.empty(pageable);
+        }
+    }
+
+    @Override
+    public ConnectionStatsDTO getConnectionStats(String username) {
+        try {
+            return new ConnectionStatsDTO(
+                    userNeo4jRepository.countFollowedUsers(username),
+                    userNeo4jRepository.countFollowers(username),
+                    userNeo4jRepository.countMutualFollows(username));
+        } catch (Exception e) {
+            log.error("Errore in getConnectionStats", e);
+            return null;
+        }
+    }
+
+    @Override
     public List<UserNeo4j> getFriendsOfFriends(String username) {
         try {
             return userNeo4jRepository.findFriendsOfFriends(username);
@@ -397,7 +447,17 @@ public class UserNeo4jService implements IUserNeo4jService {
     private List<SuggestedUserDTO> readSuggestionsCache(String key) {
         try {
             Object cached = redisTemplate.opsForValue().get(key);
-            return cached == null ? null : (List<SuggestedUserDTO>) cached;
+            if (cached == null) {
+                return null;
+            }
+            List<?> entries = (List<?>) cached;
+            if (entries.stream().allMatch(SuggestedUserDTO.class::isInstance)) {
+                return (List<SuggestedUserDTO>) cached;
+            }
+            // il JSON in cache non porta il tipo degli elementi: senza conversione tornano come
+            // LinkedHashMap e il primo accesso a un getter fallisce con ClassCastException
+            return CACHE_MAPPER.convertValue(
+                    cached, new TypeReference<List<SuggestedUserDTO>>() {});
         } catch (Exception e) {
             log.warn("Redis non raggiungibile in lettura per la chiave {}", key, e);
             return null;
@@ -425,16 +485,25 @@ public class UserNeo4jService implements IUserNeo4jService {
     @Override
     public Boolean addLikeToReview(String username, String id) {
         try {
+            Optional<Review> optionalReview = reviewRepository.findById(id);
+            // non si mette like ai propri contenuti: va controllato prima di creare la relazione
+            // LIKE, cosi non c'e' nulla da annullare e likeCount non si muove
+            if (optionalReview.isPresent() && username.equals(optionalReview.get().getUsername())) {
+                return false;
+            }
+
             Boolean likePresent = userNeo4jRepository.addLikeToReview(username, id);
             if (likePresent != null && !likePresent.booleanValue()) {
                 // se il like non è presente si aggiunge anche su mongoDB
-                Optional<Review> optionalReview = reviewRepository.findById(id);
                 if (optionalReview.isPresent()) {
                     Review review = optionalReview.get();
                     int modifiedLikeCount = review.getLikeCount();
                     modifiedLikeCount += 1;
                     review.setLikeCount(modifiedLikeCount);
                     reviewRepository.save(review);
+
+                    activityService.recordLikeReview(username, review.getTitle(), id);
+                    notificationService.notifyLike(username, review);
 
                     // check if in the embedded review list of the game the likeCount of this review
                     // is greater of the likeCount of the embedded review with minor likeCount, if
@@ -522,7 +591,9 @@ public class UserNeo4jService implements IUserNeo4jService {
                 return false;
             }
 
-            // il like c'era davvero, quindi si decrementa anche su mongoDB
+            // il like c'era davvero, quindi si decrementa anche su mongoDB e sparisce dal feed
+            activityService.removeLikeReview(username, id);
+            notificationService.removeLike(username, id);
             Optional<Review> optionalReview = reviewRepository.findById(id);
             if (optionalReview.isEmpty()) {
                 return false;
@@ -584,7 +655,14 @@ public class UserNeo4jService implements IUserNeo4jService {
             // check both sides of the relationship exist in the graph before linking them
             if (userNeo4jRepository.getUser(followerUsername) != null
                     && userNeo4jRepository.getUser(followedUsername) != null) {
-                userNeo4jRepository.followUser(followerUsername, followedUsername);
+                Boolean alreadyFollowing =
+                        userNeo4jRepository.followUser(followerUsername, followedUsername);
+                // solo alla prima volta: il MERGE e' idempotente, l'attivita' no
+                if (!Boolean.TRUE.equals(alreadyFollowing)
+                        && !followerUsername.equals(followedUsername)) {
+                    activityService.recordFollow(followerUsername, followedUsername);
+                    notificationService.notifyFollow(followerUsername, followedUsername);
+                }
                 return true;
             }
             return false;
@@ -602,6 +680,8 @@ public class UserNeo4jService implements IUserNeo4jService {
             for (UserNeo4j userNeo4j : userNeo4jList) {
                 if (userNeo4j.getUsername().equals(followedUsername)) {
                     userNeo4jRepository.unfollowUser(followerUsername, followedUsername);
+                    activityService.removeFollow(followerUsername, followedUsername);
+                    notificationService.removeFollow(followerUsername, followedUsername);
                     return true;
                 }
             }

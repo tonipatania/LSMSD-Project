@@ -14,8 +14,10 @@ import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.User;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
 import it.unipi.lsmsd.gamehub.repository.LoginRepository;
+import it.unipi.lsmsd.gamehub.repository.ReviewReplyRepository;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.service.IGameService;
+import it.unipi.lsmsd.gamehub.service.INotificationService;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +36,8 @@ class ReviewServiceTest {
     @Mock private GameRepository gameRepository;
     @Mock private LoginRepository loginRepository;
     @Mock private IGameService gameService;
+    @Mock private ReviewReplyRepository replyRepository;
+    @Mock private INotificationService notificationService;
 
     @InjectMocks private ReviewService reviewService;
 
@@ -88,6 +92,21 @@ class ReviewServiceTest {
     }
 
     @Test
+    void getReview_existingId_returnsIt() {
+        Review review = review("r1", "BARRIER X");
+        when(reviewRepository.findById("r1")).thenReturn(Optional.of(review));
+
+        assertThat(reviewService.getReview("r1")).containsSame(review);
+    }
+
+    @Test
+    void getReview_unknownId_returnsEmpty() {
+        when(reviewRepository.findById("nope")).thenReturn(Optional.empty());
+
+        assertThat(reviewService.getReview("nope")).isEmpty();
+    }
+
+    @Test
     void deleteReview_reviewNotFound_returnsNotFound() {
         when(reviewRepository.findById("r1")).thenReturn(Optional.empty());
 
@@ -107,6 +126,10 @@ class ReviewServiceTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(reviewRepository).deleteById("r1");
+        // le risposte spariscono insieme alla recensione a cui rispondono
+        verify(replyRepository).deleteByReviewId("r1");
+        // e con loro le notifiche che puntavano a quella recensione
+        verify(notificationService).removeForReview("r1");
         verify(gameService).updateGameReviewFromScratch(any(Game.class), eq(20));
     }
 

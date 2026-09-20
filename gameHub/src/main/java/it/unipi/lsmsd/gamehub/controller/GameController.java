@@ -1,7 +1,9 @@
 package it.unipi.lsmsd.gamehub.controller;
 
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
+import it.unipi.lsmsd.gamehub.DTO.GameRailsDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
+import it.unipi.lsmsd.gamehub.service.IGameRailService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
 import java.util.List;
@@ -20,6 +22,8 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class GameController {
     @Autowired private IGameService gameService;
+
+    @Autowired private IGameRailService gameRailService;
 
     @Autowired private GameNeo4jService gameNeo4jService;
 
@@ -41,6 +45,12 @@ public class GameController {
         Page<Game> gamePage =
                 gameService.retrieveGamesByParameters(name, genres, avgScore, pageable);
         return ResponseEntity.ok(gamePage);
+    }
+
+    // scaffali della pagina Giochi (settimana, preferiti della community, ultime uscite)
+    @GetMapping("/rails")
+    public ResponseEntity<GameRailsDTO> getRails() {
+        return ResponseEntity.ok(gameRailService.getRails());
     }
 
     @GetMapping("/genres")

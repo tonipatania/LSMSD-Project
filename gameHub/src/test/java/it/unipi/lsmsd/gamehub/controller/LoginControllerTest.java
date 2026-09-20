@@ -6,13 +6,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.unipi.lsmsd.gamehub.DTO.ForgotPasswordDTO;
 import it.unipi.lsmsd.gamehub.DTO.LoginDTO;
 import it.unipi.lsmsd.gamehub.DTO.RegistrationDTO;
+import it.unipi.lsmsd.gamehub.DTO.ResetPasswordDTO;
 import it.unipi.lsmsd.gamehub.security.JwtService;
+import it.unipi.lsmsd.gamehub.security.LoginRateLimiter;
+import it.unipi.lsmsd.gamehub.security.TokenBlacklistService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import it.unipi.lsmsd.gamehub.utils.AuthResponse;
@@ -43,6 +48,12 @@ class LoginControllerTest {
     // JwtService bean, even though @AutoConfigureMockMvc(addFilters = false) means it never runs:
     // without this @MockBean, context startup fails with a NoSuchBeanDefinitionException.
     @MockBean private JwtService jwtService;
+
+    // JwtAuthenticationFilter (wired through SecurityConfig) also needs a TokenBlacklistService
+    @MockBean private TokenBlacklistService tokenBlacklistService;
+
+    // LoginController @Autowires the rate limiter directly
+    @MockBean private LoginRateLimiter loginRateLimiter;
 
     @Test
     void login_validCredentials_returnsOkWithAuthResponse() throws Exception {
@@ -180,5 +191,90 @@ class LoginControllerTest {
                 .andExpect(status().isInternalServerError());
 
         verify(loginService).removeUser("id1");
+    }
+
+    @Test
+    void forgotPassword_validEmail_returnsOkAndRequestsReset() throws Exception {
+        mockMvc.perform(
+                        post("/forgot-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new ForgotPasswordDTO("mario@example.com"))))
+                .andExpect(status().isOk());
+
+        verify(loginService).requestPasswordReset("mario@example.com");
+        verify(loginRateLimiter).recordFailure(any());
+    }
+
+    @Test
+    void forgotPassword_invalidEmail_returnsBadRequestWithoutCallingService() throws Exception {
+        mockMvc.perform(
+                        post("/forgot-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new ForgotPasswordDTO("not-an-email"))))
+                .andExpect(status().isBadRequest());
+
+        verify(loginService, never()).requestPasswordReset(any());
+    }
+
+    @Test
+    void forgotPassword_rateLimited_returnsTooManyRequestsWithoutCallingService() throws Exception {
+        when(loginRateLimiter.isBlocked(any())).thenReturn(true);
+        when(loginRateLimiter.remainingBlockSeconds(any())).thenReturn(120L);
+
+        mockMvc.perform(
+                        post("/forgot-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new ForgotPasswordDTO("mario@example.com"))))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "120"));
+
+        verify(loginService, never()).requestPasswordReset(any());
+    }
+
+    @Test
+    void resetPassword_validToken_returnsOk() throws Exception {
+        when(loginService.resetPassword("tok", "NewPassw0rd!"))
+                .thenReturn(new ResponseEntity<>("Password aggiornata", HttpStatus.OK));
+
+        mockMvc.perform(
+                        post("/reset-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new ResetPasswordDTO("tok", "NewPassw0rd!"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void resetPassword_expiredToken_returnsGone() throws Exception {
+        when(loginService.resetPassword("tok", "NewPassw0rd!"))
+                .thenReturn(new ResponseEntity<>("scaduto", HttpStatus.GONE));
+
+        mockMvc.perform(
+                        post("/reset-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new ResetPasswordDTO("tok", "NewPassw0rd!"))))
+                .andExpect(status().isGone());
+    }
+
+    @Test
+    void resetPassword_weakPassword_returnsBadRequestWithoutCallingService() throws Exception {
+        mockMvc.perform(
+                        post("/reset-password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                new ResetPasswordDTO("tok", "weak"))))
+                .andExpect(status().isBadRequest());
+
+        verify(loginService, never()).resetPassword(any(), any());
     }
 }
