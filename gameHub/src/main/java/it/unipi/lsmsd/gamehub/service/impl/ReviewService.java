@@ -5,6 +5,7 @@ import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
 import it.unipi.lsmsd.gamehub.repository.LoginRepository;
+import it.unipi.lsmsd.gamehub.repository.ReviewReplyRepository;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.IReviewService;
@@ -25,6 +26,8 @@ import org.springframework.stereotype.Service;
 public class ReviewService implements IReviewService {
 
     @Autowired private ReviewRepository reviewRepository;
+
+    @Autowired private ReviewReplyRepository replyRepository;
 
     @Autowired private GameRepository gameRepository;
 
@@ -74,6 +77,8 @@ public class ReviewService implements IReviewService {
             }
 
             reviewRepository.deleteById(id);
+            // le risposte non hanno senso senza la recensione a cui rispondono
+            replyRepository.deleteByReviewId(id);
 
             List<Game> game = gameRepository.findByName(review.get().getTitle());
             if (game != null && !game.isEmpty()) {

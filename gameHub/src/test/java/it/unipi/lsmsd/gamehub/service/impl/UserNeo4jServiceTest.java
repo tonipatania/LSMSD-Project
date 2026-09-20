@@ -397,11 +397,14 @@ class UserNeo4jServiceTest {
     }
 
     @Test
-    void addLikeToReview_likeAlreadyPresentInNeo4j_returnsFalseWithoutTouchingMongo() {
+    void addLikeToReview_likeAlreadyPresentInNeo4j_returnsFalseWithoutWritingToMongo() {
         when(userNeo4jRepository.addLikeToReview("Lunark", "r1")).thenReturn(true);
+        Review review = reviewWithLikes("r1", 1);
+        review.setUsername("Kaistlin");
+        when(reviewRepository.findById("r1")).thenReturn(Optional.of(review));
 
         assertThat(userNeo4jService.addLikeToReview("Lunark", "r1")).isFalse();
-        verify(reviewRepository, never()).findById(anyString());
+        verify(reviewRepository, never()).save(any(Review.class));
     }
 
     @Test
@@ -651,24 +654,25 @@ class UserNeo4jServiceTest {
     }
 
     @Test
-    void addLikeToReview_likeOnOwnReview_recordsNoActivity() {
-        when(userNeo4jRepository.addLikeToReview("Lunark", "r1")).thenReturn(false);
+    void addLikeToReview_likeOnOwnReview_isRefusedWithoutTouchingNeo4jOrMongo() {
         Review review = reviewWithLikes("r1", 1);
         review.setTitle("BARRIER X");
         review.setUsername("Lunark");
         when(reviewRepository.findById("r1")).thenReturn(Optional.of(review));
-        Game game = mongoGame("g1", "BARRIER X");
-        game.setReviews(List.of(reviewWithLikes("embedded", 50)));
-        when(gameRepository.findByName("BARRIER X")).thenReturn(List.of(game));
 
-        userNeo4jService.addLikeToReview("Lunark", "r1");
+        Boolean result = userNeo4jService.addLikeToReview("Lunark", "r1");
 
+        assertThat(result).isFalse();
+        assertThat(review.getLikeCount()).isEqualTo(1);
+        verify(userNeo4jRepository, never()).addLikeToReview(anyString(), anyString());
+        verify(reviewRepository, never()).save(any(Review.class));
         verify(activityService, never()).recordLikeReview(anyString(), anyString(), anyString());
     }
 
     @Test
     void addLikeToReview_likeAlreadyPresent_recordsNoActivity() {
         when(userNeo4jRepository.addLikeToReview("Lunark", "r1")).thenReturn(true);
+        when(reviewRepository.findById("r1")).thenReturn(Optional.of(reviewWithLikes("r1", 1)));
 
         userNeo4jService.addLikeToReview("Lunark", "r1");
 
