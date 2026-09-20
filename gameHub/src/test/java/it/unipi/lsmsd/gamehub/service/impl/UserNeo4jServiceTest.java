@@ -2,6 +2,7 @@ package it.unipi.lsmsd.gamehub.service.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -375,6 +376,32 @@ class UserNeo4jServiceTest {
         List<SuggestedUserDTO> result = userNeo4jService.getSuggestedFriends("Lunark");
 
         assertThat(result).containsExactly(popularOther);
+    }
+
+    @Test
+    void getSuggestedFriends_popularPoolFromRedis_isReadBackAsDtosNotMaps() {
+        useDirectExecutor();
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        // il JSON in Redis non ha il tipo degli elementi: il serializer restituisce mappe
+        when(valueOperations.get("gamehub:suggestions:popular"))
+                .thenReturn(
+                        List.of(
+                                java.util.Map.of(
+                                        "id", "u5",
+                                        "username", "Popular",
+                                        "reason", "POPULAR",
+                                        "commonGames", 0,
+                                        "followers", 10)));
+        when(valueOperations.get("gamehub:suggestions:friends:Lunark")).thenReturn(null);
+        when(userNeo4jRepository.findSuggestedFriends(eq("Lunark"), eq(10))).thenReturn(List.of());
+        when(userNeo4jRepository.findUsersWithSimilarTastes(eq("Lunark"), eq(10)))
+                .thenReturn(List.of());
+        when(userNeo4jRepository.findFollowedUsers("Lunark")).thenReturn(List.of());
+
+        List<SuggestedUserDTO> result = userNeo4jService.getSuggestedFriends("Lunark");
+
+        assertThat(result).extracting(SuggestedUserDTO::getUsername).containsExactly("Popular");
+        verify(userNeo4jRepository, never()).findMostFollowedUsers(anyInt());
     }
 
     @Test
