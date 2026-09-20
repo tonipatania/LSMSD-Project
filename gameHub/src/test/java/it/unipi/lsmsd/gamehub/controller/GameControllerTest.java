@@ -15,10 +15,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unipi.lsmsd.gamehub.DTO.GameDTO;
+import it.unipi.lsmsd.gamehub.DTO.GameRailsDTO;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.security.SecurityConfig;
 import it.unipi.lsmsd.gamehub.security.TokenBlacklistService;
+import it.unipi.lsmsd.gamehub.service.IGameRailService;
 import it.unipi.lsmsd.gamehub.service.IGameService;
 import it.unipi.lsmsd.gamehub.service.impl.GameNeo4jService;
 import java.util.List;
@@ -57,6 +59,7 @@ class GameControllerTest {
     @Autowired private ObjectMapper objectMapper;
 
     @MockBean private IGameService gameService;
+    @MockBean private IGameRailService gameRailService;
     @MockBean private GameNeo4jService gameNeo4jService;
 
     // @WebMvcTest still wires SecurityConfig -> JwtAuthenticationFilter, whose constructor needs a
@@ -303,5 +306,23 @@ class GameControllerTest {
         mockMvc.perform(get("/game/withReviews"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value("g1"));
+    }
+
+    @Test
+    void getRails_returnsTheThreeRails() throws Exception {
+        Game weekly = new Game();
+        weekly.setName("Weekly Hit");
+        Game favorite = new Game();
+        favorite.setName("Fan Favorite");
+        Game latest = new Game();
+        latest.setName("Brand New");
+        when(gameRailService.getRails())
+                .thenReturn(new GameRailsDTO(List.of(weekly), List.of(favorite), List.of(latest)));
+
+        mockMvc.perform(get("/game/rails"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weekly[0].name").value("Weekly Hit"))
+                .andExpect(jsonPath("$.favorites[0].name").value("Fan Favorite"))
+                .andExpect(jsonPath("$.latest[0].name").value("Brand New"));
     }
 }

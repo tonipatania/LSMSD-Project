@@ -9,4 +9,8 @@ public interface GameRepositoryCustom {
     Page<Game> searchGames(String name, List<String> genres, Integer avgScore, Pageable pageable);
 
     List<String> findDistinctGenres();
+
+    // id dei giochi con copertina usciti piu' di recente (mai quelli con data futura), dal piu'
+    // nuovo. releaseDate e' una stringa, quindi la data si ricava dentro la pipeline.
+    List<String> findLatestReleasedGameIds(int limit);
 }
