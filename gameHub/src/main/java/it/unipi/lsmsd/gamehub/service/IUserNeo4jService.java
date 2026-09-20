@@ -1,6 +1,9 @@
 package it.unipi.lsmsd.gamehub.service;
 
+import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
+import it.unipi.lsmsd.gamehub.DTO.ConnectionStatsDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
+import it.unipi.lsmsd.gamehub.model.ConnectionType;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
@@ -35,6 +38,11 @@ public interface IUserNeo4jService {
     List<UserNeo4j> getFollowedUser(String username);
 
     Page<UserNeo4j> getFollowedUserPage(String username, Pageable pageable);
+
+    // elenchi seguiti / follower / reciproci della pagina Community, con il flag "reciproco"
+    Page<ConnectionDTO> getConnectionsPage(String username, ConnectionType type, Pageable pageable);
+
+    ConnectionStatsDTO getConnectionStats(String username);
 
     List<UserNeo4j> getFriendsOfFriends(String username);
 
