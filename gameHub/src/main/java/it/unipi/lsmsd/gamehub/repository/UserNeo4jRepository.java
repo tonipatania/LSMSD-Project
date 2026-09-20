@@ -153,6 +153,14 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
                     + "RETURN count(f)")
     long countMutualFollows(@Param("username") String username);
 
+    // fra i candidati, quelli che l'utente segue gia': la lista notifiche la usa per non proporre
+    // "Segui anche tu" a chi e' gia' seguito, senza una query per notifica
+    @Query(
+            "MATCH (:UserNeo4j {username: $username})-[:FOLLOW]->(f:UserNeo4j) "
+                    + "WHERE f.username IN $candidates RETURN f.username")
+    List<String> findFollowedAmong(
+            @Param("username") String username, @Param("candidates") List<String> candidates);
+
     // DA MODIFICARE NEL MAIN->AGGIUNGE LIKE AD UNA REVIEW
     @Query(
             "MATCH (u:UserNeo4j {username:$username}), (g:ReviewNeo4j {id: $id}) "

@@ -19,6 +19,7 @@ import it.unipi.lsmsd.gamehub.repository.GameNeo4jRepository;
 import it.unipi.lsmsd.gamehub.repository.GameRepository;
 import it.unipi.lsmsd.gamehub.repository.UserNeo4jRepository;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
+import it.unipi.lsmsd.gamehub.service.INotificationService;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -52,6 +53,7 @@ class SuggestionReactivityTest {
     @Mock private ValueOperations<String, Object> valueOperations;
     @Mock private Executor suggestionsExecutor;
     @Mock private IActivityService activityService;
+    @Mock private INotificationService notificationService;
 
     @InjectMocks private UserNeo4jService userNeo4jService;
     @InjectMocks private GameNeo4jService gameNeo4jService;

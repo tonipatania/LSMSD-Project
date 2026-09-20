@@ -3,6 +3,7 @@ package it.unipi.lsmsd.gamehub.service.impl;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,7 @@ import it.unipi.lsmsd.gamehub.model.Review;
 import it.unipi.lsmsd.gamehub.model.ReviewReply;
 import it.unipi.lsmsd.gamehub.repository.ReviewReplyRepository;
 import it.unipi.lsmsd.gamehub.repository.ReviewRepository;
+import it.unipi.lsmsd.gamehub.service.INotificationService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +32,7 @@ class ReviewReplyServiceTest {
     @Mock private ReviewReplyRepository replyRepository;
     @Mock private ReviewRepository reviewRepository;
     @Mock private MongoTemplate mongoTemplate;
+    @Mock private INotificationService notificationService;
 
     @InjectMocks private ReviewReplyService replyService;
 
@@ -55,6 +58,8 @@ class ReviewReplyServiceTest {
         // il testo viene ripulito dagli spazi
         assertThat(saved.getComment()).isEqualTo("Concordo!");
         assertThat(saved.getCreatedAt()).isNotNull();
+        // l'autore della recensione viene avvisato della risposta
+        verify(notificationService).notifyReply(eq("Lunark"), any(Review.class), eq(saved));
     }
 
     @Test
@@ -66,6 +71,7 @@ class ReviewReplyServiceTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         verify(replyRepository, never()).save(any(ReviewReply.class));
+        verify(notificationService, never()).notifyReply(any(), any(), any());
     }
 
     @Test
@@ -127,6 +133,8 @@ class ReviewReplyServiceTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(replyRepository).deleteById("p1");
+        // senza la risposta non c'e' piu' nulla di cui avvisare
+        verify(notificationService).removeReply("p1");
     }
 
     @Test
