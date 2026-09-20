@@ -1,5 +1,7 @@
 package it.unipi.lsmsd.gamehub.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
 import it.unipi.lsmsd.gamehub.DTO.ConnectionStatsDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
@@ -55,6 +57,8 @@ public class UserNeo4jService implements IUserNeo4jService {
     // taglio avviene qui, dopo la query, solo sull'endpoint non paginato.
     private static final int WISHLIST_UNPAGINATED_CAP = 500;
     private static final int FOLLOWED_UNPAGINATED_CAP = 2000;
+
+    private static final ObjectMapper CACHE_MAPPER = new ObjectMapper();
 
     private static final String POPULAR_CACHE_KEY = "gamehub:suggestions:popular";
     private static final Duration POPULAR_CACHE_TTL = Duration.ofMinutes(10);
@@ -441,7 +445,17 @@ public class UserNeo4jService implements IUserNeo4jService {
     private List<SuggestedUserDTO> readSuggestionsCache(String key) {
         try {
             Object cached = redisTemplate.opsForValue().get(key);
-            return cached == null ? null : (List<SuggestedUserDTO>) cached;
+            if (cached == null) {
+                return null;
+            }
+            List<?> entries = (List<?>) cached;
+            if (entries.stream().allMatch(SuggestedUserDTO.class::isInstance)) {
+                return (List<SuggestedUserDTO>) cached;
+            }
+            // il JSON in cache non porta il tipo degli elementi: senza conversione tornano come
+            // LinkedHashMap e il primo accesso a un getter fallisce con ClassCastException
+            return CACHE_MAPPER.convertValue(
+                    cached, new TypeReference<List<SuggestedUserDTO>>() {});
         } catch (Exception e) {
             log.warn("Redis non raggiungibile in lettura per la chiave {}", key, e);
             return null;
