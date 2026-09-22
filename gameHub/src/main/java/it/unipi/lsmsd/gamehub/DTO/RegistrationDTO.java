@@ -21,17 +21,23 @@ public class RegistrationDTO {
     private String surname;
 
     @NotBlank(message = "Lo username e' obbligatorio")
+    @Pattern(
+            regexp = "^[A-Za-z0-9._-]{3,20}$",
+            message =
+                    "Lo username puo' contenere solo lettere, numeri, punti, underscore e"
+                            + " trattini, senza spazi (3-20 caratteri)")
     private String username;
 
-    // Tra 8 e 32 caratteri, con una maiuscola e un carattere speciale. 32 e' una scelta di UX
-    // (lunghezza tipica richiesta dalla maggior parte dei siti), non un vincolo tecnico: resta
-    // ben al di sotto dei 72 byte oltre i quali BCryptPasswordEncoder (vedi SecurityConfig)
-    // tronca silenziosamente l'input.
+    // Tra 8 e 32 caratteri, senza spazi, con una maiuscola e un carattere speciale. 32 e' una
+    // scelta di UX (lunghezza tipica richiesta dalla maggior parte dei siti), non un vincolo
+    // tecnico: resta ben al di sotto dei 72 byte oltre i quali BCryptPasswordEncoder (vedi
+    // SecurityConfig) tronca silenziosamente l'input. Lo spazio e' escluso esplicitamente dal
+    // carattere speciale richiesto, altrimenti basterebbe uno spazio a soddisfare il requisito.
     @Pattern(
-            regexp = "^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,32}$",
+            regexp = "^(?=.*[A-Z])(?=.*[^A-Za-z0-9\\s])\\S{8,32}$",
             message =
-                    "La password deve essere lunga tra 8 e 32 caratteri, con almeno una lettera"
-                            + " maiuscola e un carattere speciale")
+                    "La password deve essere lunga tra 8 e 32 caratteri, senza spazi, con almeno"
+                            + " una lettera maiuscola e un carattere speciale")
     private String password;
 
     @NotBlank(message = "L'email e' obbligatoria")
