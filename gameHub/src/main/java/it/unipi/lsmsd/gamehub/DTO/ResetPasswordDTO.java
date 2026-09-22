@@ -21,9 +21,9 @@ public class ResetPasswordDTO {
     // solo accetta null, quindi serve anche @NotBlank.
     @NotBlank(message = "La password e' obbligatoria")
     @Pattern(
-            regexp = "^(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,32}$",
+            regexp = "^(?=.*[A-Z])(?=.*[^A-Za-z0-9\\s])\\S{8,32}$",
             message =
-                    "La password deve essere lunga tra 8 e 32 caratteri, con almeno una lettera"
-                            + " maiuscola e un carattere speciale")
+                    "La password deve essere lunga tra 8 e 32 caratteri, senza spazi, con almeno"
+                            + " una lettera maiuscola e un carattere speciale")
     private String newPassword;
 }
