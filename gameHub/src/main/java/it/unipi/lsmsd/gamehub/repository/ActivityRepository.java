@@ -3,6 +3,7 @@ package it.unipi.lsmsd.gamehub.repository;
 import it.unipi.lsmsd.gamehub.model.Activity;
 import it.unipi.lsmsd.gamehub.model.ActivityType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,4 +23,10 @@ public interface ActivityRepository extends MongoRepository<Activity, String> {
 
     void deleteByUsernameAndTypeAndTargetUsername(
             String username, ActivityType type, String targetUsername);
+
+    void deleteByUsername(String username);
+
+    void deleteByTargetUsername(String targetUsername);
+
+    void deleteByReviewIdIn(Collection<String> reviewIds);
 }

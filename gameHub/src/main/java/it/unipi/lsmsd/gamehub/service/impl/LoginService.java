@@ -76,6 +76,12 @@ public class LoginService implements ILoginService {
         }
     }
 
+    @Override
+    public boolean checkPassword(String username, String rawPassword) {
+        User user = loginRepository.findByUsername(username);
+        return user != null && matchesPassword(user, rawPassword);
+    }
+
     // il dump iniziale contiene password in chiaro: al primo login corretto vengono
     // sostituite con l'hash BCrypt, così i dati esistenti restano utilizzabili
     private boolean matchesPassword(User user, String rawPassword) {

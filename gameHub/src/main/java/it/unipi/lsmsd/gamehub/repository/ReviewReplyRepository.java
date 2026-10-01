@@ -1,6 +1,7 @@
 package it.unipi.lsmsd.gamehub.repository;
 
 import it.unipi.lsmsd.gamehub.model.ReviewReply;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -11,4 +12,8 @@ public interface ReviewReplyRepository extends MongoRepository<ReviewReply, Stri
     List<ReviewReply> findByReviewIdOrderByCreatedAtAsc(String reviewId, Pageable pageable);
 
     void deleteByReviewId(String reviewId);
+
+    void deleteByReviewIdIn(Collection<String> reviewIds);
+
+    void deleteByUsername(String username);
 }

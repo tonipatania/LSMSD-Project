@@ -2,12 +2,14 @@ package it.unipi.lsmsd.gamehub.controller;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,6 +17,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 import it.unipi.lsmsd.gamehub.DTO.CommunityHighlightsDTO;
 import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
 import it.unipi.lsmsd.gamehub.DTO.ConnectionStatsDTO;
@@ -24,10 +28,12 @@ import it.unipi.lsmsd.gamehub.model.UserNeo4j;
 import it.unipi.lsmsd.gamehub.security.JwtService;
 import it.unipi.lsmsd.gamehub.security.SecurityConfig;
 import it.unipi.lsmsd.gamehub.security.TokenBlacklistService;
+import it.unipi.lsmsd.gamehub.service.IAccountService;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -40,6 +46,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -63,6 +70,7 @@ class UserControllerTest {
     @MockBean private IUserNeo4jService userNeo4jService;
     @MockBean private ILoginService iLoginService;
     @MockBean private IActivityService activityService;
+    @MockBean private IAccountService accountService;
 
     // see LoginControllerTest for why this is required even with addFilters = false
     @MockBean private JwtService jwtService;
@@ -509,5 +517,55 @@ class UserControllerTest {
 
         mockMvc.perform(get("/user/connections/stats").with(asUser("Lunark")))
                 .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void deleteAccount_serviceSucceeds_returnsOkAndRevokesCurrentToken() throws Exception {
+        when(accountService.deleteAccount("mario", "Password1!"))
+                .thenReturn(new ResponseEntity<>("Account eliminato", HttpStatus.OK));
+        Claims claims =
+                Jwts.claims()
+                        .id("jti-1")
+                        .expiration(new Date(System.currentTimeMillis() + 60_000))
+                        .build();
+        when(jwtService.parseToken("tok")).thenReturn(claims);
+
+        mockMvc.perform(
+                        delete("/user/account")
+                                .with(asUser("mario"))
+                                .header("Authorization", "Bearer tok")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"password\":\"Password1!\"}"))
+                .andExpect(status().isOk());
+
+        verify(tokenBlacklistService).revoke(eq("jti-1"), anyLong());
+    }
+
+    @Test
+    void deleteAccount_wrongPassword_returnsForbiddenAndKeepsTokenValid() throws Exception {
+        when(accountService.deleteAccount("mario", "wrong"))
+                .thenReturn(new ResponseEntity<>("Password non corretta", HttpStatus.FORBIDDEN));
+
+        mockMvc.perform(
+                        delete("/user/account")
+                                .with(asUser("mario"))
+                                .header("Authorization", "Bearer tok")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"password\":\"wrong\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(tokenBlacklistService, never()).revoke(anyString(), anyLong());
+    }
+
+    @Test
+    void deleteAccount_missingPassword_returnsBadRequestWithoutCallingService() throws Exception {
+        mockMvc.perform(
+                        delete("/user/account")
+                                .with(asUser("mario"))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verify(accountService, never()).deleteAccount(anyString(), anyString());
     }
 }

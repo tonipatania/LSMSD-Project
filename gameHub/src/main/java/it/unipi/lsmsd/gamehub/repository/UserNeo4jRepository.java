@@ -202,6 +202,24 @@ public interface UserNeo4jRepository extends Neo4jRepository<UserNeo4j, String> 
     @Query("MATCH (a:UserNeo4j) WHERE a.username = $username DELETE a")
     void removeUser(String username);
 
+    // cancellazione dell'account: a differenza di removeUser (usato solo per il rollback di una
+    // registrazione appena fatta, quando il nodo non ha ancora relazioni) qui il nodo ha
+    // FOLLOW/ADD/LIKE, e un DELETE semplice fallirebbe. Il dump contiene username duplicati, quindi
+    // la MATCH puo' restituire piu' nodi: vanno eliminati tutti.
+    @Query("MATCH (a:UserNeo4j {username: $username}) DETACH DELETE a")
+    void deleteUserWithRelationships(@Param("username") String username);
+
+    // cancellazione dell'account: trova E rimuove in una sola query, atomicamente, tutte le
+    // relazioni LIKE date dall'utente (senza LIMIT: vanno azzerate tutte, non solo le prime 5000
+    // come findLikedReviewIds). La cancellazione della relazione qui, invece che nel DETACH DELETE
+    // finale del nodo utente, e' cio' che rende il passo idempotente: se il resto della
+    // cancellazione account fallisce dopo questa chiamata e l'utente ritenta, la relazione non
+    // c'e' piu' e il likeCount su Mongo (decrementato subito dopo, in AccountService) non viene
+    // decrementato una seconda volta per lo stesso like.
+    @Query(
+            "MATCH (a:UserNeo4j {username: $username})-[l:LIKE]->(r:ReviewNeo4j) DELETE l RETURN r.id")
+    List<String> consumeAllLikedReviewIds(@Param("username") String username);
+
     // @Query("MATCH (a:UserNeo4j) WHERE a.username = '$username' DELETE a")
     @Query("CREATE (a:UserNeo4j {id: $id, username: $username})")
     void addUser(String id, String username);

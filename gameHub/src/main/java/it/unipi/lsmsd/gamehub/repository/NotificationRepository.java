@@ -2,6 +2,7 @@ package it.unipi.lsmsd.gamehub.repository;
 
 import it.unipi.lsmsd.gamehub.model.Notification;
 import it.unipi.lsmsd.gamehub.model.NotificationType;
+import java.util.Collection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -22,6 +23,12 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     void deleteByReplyId(String replyId);
 
     void deleteByReviewId(String reviewId);
+
+    void deleteByReviewIdIn(Collection<String> reviewIds);
+
+    void deleteByRecipient(String recipient);
+
+    void deleteByActor(String actor);
 
     // solo il destinatario puo' eliminare la propria notifica: torna quante ne ha tolte (0 o 1)
     long deleteByIdAndRecipient(String id, String recipient);

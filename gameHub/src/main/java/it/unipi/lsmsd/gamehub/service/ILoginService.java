@@ -14,6 +14,11 @@ public interface ILoginService {
 
     public ResponseEntity<String> removeUser(String userId);
 
+    // true se la password e' quella dell'utente (stessa logica del login, compresa la migrazione
+    // delle password in chiaro del dump): serve per riconfermare l'identita' prima di azioni
+    // irreversibili come la cancellazione dell'account
+    public boolean checkPassword(String username, String rawPassword);
+
     public ResponseEntity<String> updateUser(String username, String newUsername);
 
     public void sendVerificationEmail(String userId);

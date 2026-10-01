@@ -1,17 +1,25 @@
 package it.unipi.lsmsd.gamehub.controller;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import it.unipi.lsmsd.gamehub.DTO.ActivityDTO;
 import it.unipi.lsmsd.gamehub.DTO.CommunityHighlightsDTO;
 import it.unipi.lsmsd.gamehub.DTO.ConnectionDTO;
 import it.unipi.lsmsd.gamehub.DTO.ConnectionStatsDTO;
+import it.unipi.lsmsd.gamehub.DTO.DeleteAccountDTO;
 import it.unipi.lsmsd.gamehub.DTO.SuggestedUserDTO;
 import it.unipi.lsmsd.gamehub.model.ConnectionType;
 import it.unipi.lsmsd.gamehub.model.Game;
 import it.unipi.lsmsd.gamehub.model.GameNeo4j;
 import it.unipi.lsmsd.gamehub.model.UserNeo4j;
+import it.unipi.lsmsd.gamehub.security.JwtService;
+import it.unipi.lsmsd.gamehub.security.TokenBlacklistService;
+import it.unipi.lsmsd.gamehub.service.IAccountService;
 import it.unipi.lsmsd.gamehub.service.IActivityService;
 import it.unipi.lsmsd.gamehub.service.ILoginService;
 import it.unipi.lsmsd.gamehub.service.IUserNeo4jService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +41,9 @@ public class UserController {
     @Autowired private IUserNeo4jService userNeo4jService;
     @Autowired private ILoginService iLoginService;
     @Autowired private IActivityService activityService;
+    @Autowired private IAccountService accountService;
+    @Autowired private JwtService jwtService;
+    @Autowired private TokenBlacklistService tokenBlacklistService;
 
     // to load games from mongo to neo4j
     @PostMapping("/loadgames")
@@ -294,6 +305,36 @@ public class UserController {
         responseEntity = iLoginService.updateUser(newUsername, username);
         return ResponseEntity.status(responseEntity.getStatusCode())
                 .body("username update failed, please try again later");
+    }
+
+    // Cancellazione dell'account: l'utente e' sempre quello del token (mai un parametro, altrimenti
+    // chiunque potrebbe eliminare account altrui) e deve riconfermare la password. A cancellazione
+    // avvenuta il token corrente viene revocato: resterebbe altrimenti valido fino a scadenza.
+    @DeleteMapping("/account")
+    public ResponseEntity<String> deleteAccount(
+            @AuthenticationPrincipal String username,
+            @Valid @RequestBody DeleteAccountDTO deleteAccountDTO,
+            HttpServletRequest request) {
+        ResponseEntity<String> response =
+                accountService.deleteAccount(username, deleteAccountDTO.getPassword());
+        if (response.getStatusCode() == HttpStatus.OK) {
+            revokeCurrentToken(request);
+        }
+        return response;
+    }
+
+    private void revokeCurrentToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer ")) {
+            return;
+        }
+        try {
+            Claims claims = jwtService.parseToken(header.substring(7));
+            long remainingMs = claims.getExpiration().getTime() - System.currentTimeMillis();
+            tokenBlacklistService.revoke(claims.getId(), remainingMs);
+        } catch (JwtException e) {
+            log.debug("Token non revocabile dopo l'eliminazione dell'account: {}", e.getMessage());
+        }
     }
 
     @GetMapping("/getUser")

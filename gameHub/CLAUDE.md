@@ -75,6 +75,58 @@ Bulk (re)population of the Neo4j graph from Mongo is done via an admin-only endp
 
 `Neo4jIndexInitializer` (an `ApplicationRunner`) creates Neo4j indexes/constraints at startup — a uniqueness constraint on `UserNeo4j.username` (falling back to a plain index if the constraint can't be created, e.g. due to existing duplicates) plus lookup indexes on `id`/`name` for all three Neo4j node types.
 
+## Account deletion
+
+`DELETE /user/account` (body `{password}`, `AccountService`) erases a user and everything tied to
+them. **There is no rollback at all** — not even the write-then-rollback pattern described above:
+Mongo and Neo4j are both mutated as the method proceeds, and if any step throws, everything already
+done stays done. The only thing this guarantees is that the Mongo user document is deleted **last**,
+so a failure midway leaves a loginable account the user can retry, rather than an orphaned Neo4j
+node with no Mongo user.
+
+Order: likes given (`likeCount` decremented on others' reviews) -> own reviews + their
+replies/notifications/activity/`ReviewNeo4j` nodes -> replies, notifications, activity,
+`feed_states` naming the user -> embedded `Game.reviews` refreshed for touched games -> Neo4j
+`DETACH DELETE` of the user node (follows, wishlist) -> Mongo user document.
+
+Retrying after a failure is safe **only because each step is written to also be idempotent on its
+own**, not because of any compensating rollback — a step that just re-reads "what's left to do"
+from a store that a later step hasn't touched yet would double-apply on retry. The likes step is
+the instructive example: it used to read liked-review ids from Neo4j (`MATCH ... RETURN r.id`) and
+decrement `likeCount` in Mongo, while the actual `LIKE` edges were only removed later by the final
+`DETACH DELETE`. If that final step (or anything after the likes step) failed and the user retried,
+the same edges were still there, so the same reviews got `likeCount` decremented a second time —
+silently wrong, drifting further with every retry. Fixed by making
+`UserNeo4jRepository.consumeAllLikedReviewIds` find-and-delete the edges in one Cypher query, so a
+retry finds nothing left to re-decrement. Apply the same find-and-delete-together shape to any
+future step here, rather than a separate read then a separate delete later.
+
+Two narrower, accepted trade-offs remain (both judged low-severity enough to leave as is rather
+than add more machinery — revisit only if they turn out to matter in practice):
+
+- **A failure between `consumeAllLikedReviewIds` and the Mongo `likeCount` decrement** (i.e. the
+  Neo4j edge is gone but the decrement never ran) permanently undercounts that review's
+  `likeCount` by one — the edge was the only record of "this user liked this review" and it's now
+  gone, so a retry has nothing left to re-derive the missed decrement from. This is the deliberate
+  flip side of the fix above: better a one-time, bounded miss than an unbounded double-count on
+  every retry, but it isn't perfect. Fixing it for real would mean tracking who-liked-what on the
+  Mongo side too (there's no such record today, only the aggregate `likeCount` field), which is a
+  bigger data-model change, not a tweak to this method.
+- **`refreshEmbeddedReviews` only recomputes `Game.reviews` for games this *specific* call actually
+  touched** (`affectedGames`, built fresh from what steps 1–2 just deleted/decremented). If an
+  earlier failed attempt already deleted a review or decremented a like but died before reaching
+  this step, a retry's steps 1–2 find nothing left to do (already gone) and so never re-add that
+  game to `affectedGames` — the embedded preview list on that one `Game` document can stay stale
+  (e.g. still showing a review that's already gone from the `reviews` collection) until something
+  unrelated recomputes it. The `reviews` collection itself is never wrong, only this cached
+  embedded copy. A real fix needs some persisted "this game still needs a refresh" marker that
+  survives across attempts, since by the time of a retry the evidence of which games were touched
+  is itself already gone.
+
+Wrong password is 403 (never 401: the frontend logs out on any 401), admins get 409, attempts are
+rate-limited like `/login`. Covered by `AccountServiceTest` and `AccountServiceIT`. Any new
+collection that stores a username must be added to `AccountService.removeUserContent`.
+
 ## Layering
 
 `controller` → `service` (interface `I*Service` + `impl/*Service`) → `repository`. Controllers are thin: they call one or two service methods and translate the result/exception into an HTTP status. Business logic — including the cross-database write/rollback orchestration — lives in the service layer, not the controllers.

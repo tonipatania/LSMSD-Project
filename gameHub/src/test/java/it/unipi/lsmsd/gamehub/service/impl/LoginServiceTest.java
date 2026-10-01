@@ -572,4 +572,33 @@ class LoginServiceTest {
         assertThat(user.getPasswordResetTokenExpiry()).isNull();
         verify(loginRepository).save(user);
     }
+
+    @Test
+    void checkPassword_bcryptPasswordMatches_returnsTrue() {
+        User user = new User();
+        user.setUsername("mario");
+        user.setPassword("$2a$10$hashedhashedhashedhashedhashedhashedhashedhashedhashed");
+        when(loginRepository.findByUsername("mario")).thenReturn(user);
+        when(passwordEncoder.matches("Password1!", user.getPassword())).thenReturn(true);
+
+        assertThat(loginService.checkPassword("mario", "Password1!")).isTrue();
+    }
+
+    @Test
+    void checkPassword_unknownUser_returnsFalse() {
+        when(loginRepository.findByUsername("ghost")).thenReturn(null);
+
+        assertThat(loginService.checkPassword("ghost", "Password1!")).isFalse();
+    }
+
+    @Test
+    void checkPassword_wrongPassword_returnsFalse() {
+        User user = new User();
+        user.setUsername("mario");
+        user.setPassword("$2a$10$hashedhashedhashedhashedhashedhashedhashedhashedhashed");
+        when(loginRepository.findByUsername("mario")).thenReturn(user);
+        when(passwordEncoder.matches("nope", user.getPassword())).thenReturn(false);
+
+        assertThat(loginService.checkPassword("mario", "nope")).isFalse();
+    }
 }
