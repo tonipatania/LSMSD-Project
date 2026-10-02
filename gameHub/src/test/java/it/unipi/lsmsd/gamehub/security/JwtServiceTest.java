@@ -8,7 +8,6 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.security.SignatureException;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.env.MockEnvironment;
 
 class JwtServiceTest {
 
@@ -17,7 +16,7 @@ class JwtServiceTest {
     private static final long ONE_DAY_MS = 86_400_000L;
 
     private JwtService jwtService(long expirationMs) {
-        return new JwtService(SECRET, expirationMs, new MockEnvironment());
+        return new JwtService(SECRET, expirationMs);
     }
 
     @Test
@@ -68,9 +67,7 @@ class JwtServiceTest {
     void parseToken_signedWithDifferentSecret_throwsSignatureException() {
         JwtService issuer =
                 new JwtService(
-                        "a-completely-different-secret-key-thats-also-long-enough",
-                        ONE_DAY_MS,
-                        new MockEnvironment());
+                        "a-completely-different-secret-key-thats-also-long-enough", ONE_DAY_MS);
         JwtService verifier = jwtService(ONE_DAY_MS);
         String token = issuer.generateToken("Lunark", "USER");
 

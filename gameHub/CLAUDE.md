@@ -24,7 +24,7 @@ gameHub is a Spring Boot 3.2 / Java 17 REST backend (University of Pisa LSMSD co
 ./mvnw test -Dtest=GameHubApplicationTests#contextLoads
 ```
 
-The app needs a running MongoDB (`mongodb://localhost:27017/game`) and Neo4j (`bolt://localhost:7687`) instance — see `src/main/resources/application.properties` for connection settings (Neo4j credentials are currently hardcoded there for local dev). `gamehub.jwt.secret` should be overridden via the `GAMEHUB_JWT_SECRET` env var outside local dev — with the `prod` Spring profile active (`SPRING_PROFILES_ACTIVE=prod`, set on the hosting provider), `JwtService` refuses to start if it's still the default value (see `.env.example`).
+The app needs a running MongoDB (`mongodb://localhost:27017/game`) and Neo4j (`bolt://localhost:7687`) instance — see `src/main/resources/application.properties` for connection settings. Neo4j's password and the JWT secret have no default there; they come from the `dev` profile (`application-dev.properties`), active automatically when `SPRING_PROFILES_ACTIVE` isn't set (the local case). With `SPRING_PROFILES_ACTIVE=prod` (set on the hosting provider, see `render.yaml`), that profile isn't active, so `NEO4J_PASSWORD` and `GAMEHUB_JWT_SECRET` must be real environment variables or the app fails to start at all (an unresolved `${...}` placeholder), instead of silently signing tokens with a value baked into this repo (see `.env.example`).
 
 There is no linter/formatter configured in this project.
 

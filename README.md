@@ -22,17 +22,13 @@ Frontend companion project: [`gameHub-FE`](https://github.com/tonipatania/gameHu
 - Neo4j running on `localhost:7687` (Bolt)
 
 Connection settings live in
-[`src/main/resources/application.properties`](gameHub/src/main/resources/application.properties):
-
-```properties
-spring.data.mongodb.uri=mongodb://localhost:27017/game
-spring.neo4j.uri=bolt://localhost:7687
-spring.neo4j.authentication.username=neo4j
-spring.neo4j.authentication.password=elliejoel
-```
-
-The JWT signing secret can be overridden via the `GAMEHUB_JWT_SECRET` environment variable
-(a default dev value is baked in).
+[`src/main/resources/application.properties`](gameHub/src/main/resources/application.properties).
+With no `SPRING_PROFILES_ACTIVE` set (the local case), the `dev` profile
+([`application-dev.properties`](gameHub/src/main/resources/application-dev.properties)) is active
+by default and supplies the local Neo4j password (`elliejoel`, matching `docker-compose.yml`) and
+a JWT signing secret for local use only. In production (`SPRING_PROFILES_ACTIVE=prod`, see
+[`DEPLOY.md`](../DEPLOY.md)) neither has a fallback — the app refuses to start unless
+`NEO4J_PASSWORD` and `GAMEHUB_JWT_SECRET` are set as real environment variables.
 
 Account confirmation emails are sent via the [Brevo](https://www.brevo.com) transactional email
 API (HTTPS, free tier 300/day — not SMTP, so it isn't affected by hosts that block outbound SMTP
