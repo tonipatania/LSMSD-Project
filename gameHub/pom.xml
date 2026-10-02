@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.2.1</version>
+		<version>3.5.16</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>it.unipi.lsmsd</groupId>
@@ -33,13 +33,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis</artifactId>
-		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-annotations</artifactId>
-			<version>2.16.1</version>
 		</dependency>
 
 		<dependency>
@@ -158,17 +151,8 @@
 
 
 
-
-
-
-
-		<!-- https://mvnrepository.com/artifact/io.swagger/swagger-annotations -->
-		<dependency>
-			<groupId>io.swagger</groupId>
-			<artifactId>swagger-annotations</artifactId>
-			<version>1.5.12</version>
-		</dependency>
-		<!-- https://mvnrepository.com/artifact/log4j/log4j -->
+		<!-- swagger-annotations (io.swagger:swagger-annotations) removed: not imported anywhere
+			 under src/main, dead dependency. -->
 	</dependencies>
 
 	<build>
