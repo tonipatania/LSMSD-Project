@@ -1,5 +1,10 @@
 # GameHub — Backend
 
+> **Archived.** This was the group repo for the "Large-Scale and Multi-Structured Databases"
+> course project. Development continues solo at
+> [`gameHub-backend`](https://github.com/tonipatania/gameHub-backend) — that's the current,
+> maintained version of this backend. This repo is kept as-is for the course submission record.
+
 Spring Boot backend for **GameHub**, a social network for video games. Built for the
 "Large-Scale and Multi-Structured Databases" course at the University of Pisa as a study in
 polyglot persistence: **MongoDB** stores the core entities (users, games, reviews), while
